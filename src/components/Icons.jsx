@@ -20,3 +20,5 @@ export const Clock = p => <S {...p}><circle cx="12" cy="12" r="9" /><path d="M12
 export const Device = p => <S {...p}><rect x="2" y="4" width="20" height="13" rx="2" /><path d="M8 21h8M12 17v4" /></S>
 export const Heart = p => <S {...p} fill><path d="M12 21s-7.5-4.6-9.5-9.3C1 8 3.4 4 7.2 4c2 0 3.5 1 4.8 2.7C13.3 5 14.8 4 16.8 4 20.6 4 23 8 21.5 11.7 19.5 16.4 12 21 12 21z" /></S>
 export const Disc = p => <S {...p}><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="3" /></S>
+export const Expand = p => <S {...p}><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" /></S>
+export const Collapse = p => <S {...p}><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" /></S>

@@ -3,7 +3,8 @@
   --text: #fff; --sub: #b3b3b3; --dim: #727272; --green: #1ed760; --green-h: #3be477; --line: #ffffff1a;
 }
 * { box-sizing: border-box }
-html, body, #root { height: 100% }
+html, body, #root { height: 100%; height: 100dvh }
+html { -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent }
 body { margin: 0; background: var(--bg); color: var(--text); font-family: 'Figtree', 'Inter', system-ui, sans-serif; font-size: 14px; overflow: hidden; -webkit-font-smoothing: antialiased }
 button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; padding: 0 }
 input, select { font: inherit; color: var(--text); outline: none }
@@ -29,6 +30,8 @@ header { display: flex; align-items: center; gap: 8px; padding: 8px 8px }
 .clear { color: var(--sub); font-size: 14px }
 .hdr-right { margin-left: auto; display: flex; gap: 8px; align-items: center }
 .hdr-right select { height: 32px; max-width: 200px; background: var(--elev); border: none; border-radius: 500px; padding: 0 12px; font-weight: 700; font-size: 13px; color: var(--text); cursor: pointer }
+.fs { width: 32px; height: 32px; border-radius: 50%; background: var(--elev); color: var(--sub); display: grid; place-items: center; transition: color .1s, transform .1s; flex: none }
+.fs:hover { color: var(--text); transform: scale(1.06) }
 .pill { height: 32px; padding: 0 16px; border-radius: 500px; background: var(--text); color: #000; font-weight: 700; font-size: 13px; transition: transform .1s }
 .pill:hover { transform: scale(1.04) }
 .burger { display: none; color: var(--sub) }
@@ -170,13 +173,13 @@ nav { background: var(--panel); border-radius: 8px; display: flex; flex-directio
 .content.is-vinyl { background: #000; overflow: hidden }
 .vinyl-stage { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 32px; overflow: hidden; animation: fade .5s ease }
 .vinyl-glow { position: absolute; inset: -30%; background: center/cover; filter: blur(100px) saturate(1.6); opacity: .25; animation: breathe 8s ease-in-out infinite alternate }
-.deck { position: relative; width: min(62vmin, 520px); aspect-ratio: 1; animation: drop .8s cubic-bezier(.2, 1.2, .4, 1) }
+.deck { position: relative; width: min(62vmin, 540px); aspect-ratio: 1 }
 .record { position: absolute; inset: 0; border-radius: 50%; background: #0a0a0a; cursor: pointer;
-  box-shadow: 0 0 0 1px #222, 0 30px 80px #000, 0 0 140px #ffffff0d; animation: spin 3.6s linear infinite; animation-play-state: paused }
-.record.spin { animation-play-state: running }
+  box-shadow: 0 0 0 1px #222, 0 30px 80px #000, 0 0 140px #ffffff0d; animation: spin 12s linear infinite, rec-in .7s cubic-bezier(.2,.8,.2,1); animation-play-state: paused, running }
+.record.spin { animation-play-state: running, running }
 .grooves { position: absolute; inset: 3%; border-radius: 50%; background: repeating-radial-gradient(circle, #101010 0 1px, #1c1c1c 1.5px 2.5px, #0c0c0c 3px 4px) }
 .shine { position: absolute; inset: 0; border-radius: 50%; mix-blend-mode: screen; background: conic-gradient(from 20deg, transparent 0 8%, #ffffff1f 12%, transparent 18% 50%, #ffffff17 62%, transparent 68%) }
-.label { position: absolute; inset: 32%; border-radius: 50%; background: var(--green) center/cover; box-shadow: 0 0 0 4px #000, inset 0 0 24px #00000080; display: grid; place-items: center }
+.label { position: absolute; inset: 17%; opacity: 0; border-radius: 50%; background: var(--green) center/cover; box-shadow: 0 0 0 4px #000, inset 0 0 24px #00000080; display: grid; place-items: center }
 .spindle { width: 7%; height: 7%; min-width: 10px; min-height: 10px; border-radius: 50%; background: #000; box-shadow: 0 0 0 3px #ccc, 0 0 0 5px #000 }
 .tonearm { position: absolute; top: -6%; right: -10%; width: 40%; height: 75%; pointer-events: none; transform-origin: 78% 10%; transform: rotate(-28deg); transition: transform 1s cubic-bezier(.4, 1.3, .5, 1) }
 .tonearm.on { transform: rotate(0) }
@@ -186,6 +189,14 @@ nav { background: var(--panel); border-radius: 8px; display: flex; flex-directio
 .vinyl-meta { position: relative; text-align: center; padding: 0 24px; max-width: 100% }
 .vinyl-meta h2 { margin: 0; font-size: clamp(20px, 3vw, 32px); font-weight: 700; letter-spacing: -.02em }
 .vinyl-meta p { margin: 6px 0 0; color: var(--sub); font-size: 16px }
+.record.ready .label { opacity: 1 }
+.vinyl-stage.out .grooves, .vinyl-stage.out .shine, .vinyl-stage.out .tonearm, .vinyl-stage.out .vinyl-meta, .vinyl-stage.out .vinyl-glow { opacity: 0; transition: opacity .5s }
+.vinyl-stage.out .record { box-shadow: none; transition: box-shadow .5s }
+.vinyl-meta { animation: rise .7s .15s cubic-bezier(.2,.8,.2,1) both }
+.morph { position: fixed; z-index: 100; pointer-events: none; background: center/cover; box-shadow: 0 0 0 4px #000, 0 20px 60px #000c }
+@keyframes rec-in { from { box-shadow: none; background: transparent } }
+@keyframes rise { from { opacity: 0; transform: translateY(16px) } }
+.grooves, .shine { animation: fade .8s ease both }
 @keyframes spin { to { transform: rotate(360deg) } }
 @keyframes fade { from { opacity: 0 } }
 @keyframes drop { from { transform: scale(.7) rotate(-120deg); opacity: 0 } }
@@ -216,24 +227,52 @@ nav { background: var(--panel); border-radius: 8px; display: flex; flex-directio
   .dev { display: none }
 }
 @media (max-width: 760px) {
-  .app { grid-template-rows: auto 1fr auto; padding: 0 }
-  header { flex-wrap: wrap; padding: 8px 12px; gap: 8px }
+  body { font-size: 15px }
+  .app { grid-template-rows: auto 1fr auto; padding: 0; height: 100dvh }
+  header { flex-wrap: wrap; gap: 8px; padding: calc(env(safe-area-inset-top) + 8px) 12px 8px }
   .burger { display: grid; place-items: center; width: 40px; height: 40px }
   .home { width: 40px; height: 40px }
+  .hdr-right { gap: 6px; min-width: 0 }
+  .hdr-right select { max-width: 34vw; min-width: 0; text-overflow: ellipsis }
+  .pill { padding: 0 12px }
   .search { order: 5; flex: 1 1 100%; height: 44px }
-  .hdr-right select { max-width: 140px }
+  .search input { font-size: 16px } /* 16px stops iOS zooming on focus */
   main { grid-template-columns: 1fr; gap: 0 }
-  nav { position: absolute; inset: 0 20% 0 0; z-index: 10; border-radius: 0; transform: translateX(-105%); transition: transform .25s; box-shadow: 20px 0 40px #000a }
+  nav { position: absolute; inset: 0 18% 0 0; z-index: 10; border-radius: 0; transform: translateX(-105%); transition: transform .25s; box-shadow: 20px 0 40px #000a }
   nav.open { transform: none }
   .content { border-radius: 0 }
+  .page-title { font-size: 26px; padding: 20px 16px 8px }
   .pad { padding: 0 12px 24px }
-  .hero { flex-direction: column; align-items: flex-start; padding: 24px 16px 16px; min-height: 0 }
-  .hero img, .hero-tile { width: 180px; height: 180px; align-self: center }
-  .tracks .row { padding: 0 8px; gap: 12px }
+  .pad h2 { font-size: 20px; margin: 20px 4px 8px }
+  .hero { flex-direction: column; align-items: center; text-align: center; padding: 24px 16px 16px; min-height: 0; gap: 16px }
+  .hero img, .hero-tile { width: min(60vw, 240px); height: min(60vw, 240px) }
+  .hero-text h1, .hero-text h1.long { font-size: clamp(26px, 8vw, 40px) }
+  .action-bar { padding: 12px 4px }
+  .tracks .row, .tracks.no-album .row { grid-template-columns: 22px minmax(0, 1fr) auto; height: 60px; padding: 0 6px; gap: 10px }
   .tracks .row.head { display: none }
-  .grid { grid-template-columns: repeat(2, 1fr) }
+  .tracks .row:active { background: #ffffff1a }
+  .row-play { display: none !important }
+  .row .num { display: block !important }
+  .tracks .t b { font-size: 15px }
+  .tracks .t small { font-size: 13px }
+  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px }
+  .card { padding: 8px }
+  .card b { font-size: 14px }
+  .card small { font-size: 12px }
   .fab { opacity: 1; transform: none; width: 40px; height: 40px }
-  .player { grid-template-columns: 1fr; padding: 8px 12px 12px; gap: 6px; background: #000 }
+  .player { grid-template-columns: 1fr; gap: 6px; background: #000; padding: 8px 14px calc(env(safe-area-inset-bottom) + 10px) }
+  .now-art, .now-art img, .now-art > span { width: 48px; height: 48px }
+  .now-art .mini-disc { width: 42px; height: 42px }
+  .now-text b { font-size: 15px }
+  .now-text small { font-size: 13px }
+  .btns { gap: 22px }
+  .icon { width: 40px; height: 40px }
+  .pp { width: 48px; height: 48px }
+  .bar { height: 5px }
   .right { display: none }
-  .deck { width: min(78vw, 420px) }
+  .deck { width: min(84vw, 60dvh, 420px) }
+  .vinyl-stage { gap: 24px }
+  .vinyl-meta h2 { font-size: 22px }
+  .tonearm { right: -6% }
+  .toast { bottom: calc(env(safe-area-inset-bottom) + 170px) }
 }

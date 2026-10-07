@@ -3,7 +3,7 @@ import { REDIRECT, all, api, artists, clientId, fmt, handleRedirect, img, logged
 import { usePlayer } from './usePlayer'
 import Player from './components/Player'
 import Vinyl from './components/Vinyl'
-import { Clock, Disc, Heart, Home, Library, Pause, Play, Search } from './components/Icons'
+import { Clock, Collapse, Disc, Expand, Heart, Home, Library, Pause, Play, Search } from './components/Icons'
 
 const card = (x, sub) => ({ id: x.id, type: x.type, name: x.name, image: img(x.images, 1), sub })
 
@@ -38,21 +38,26 @@ const loaders = {
     return { title: a.name, hero: { kind: a.album_type === 'single' ? 'Single' : 'Album', image: img(a.images), sub: `${artists(a)} • ${a.release_date?.slice(0, 4)} • ${a.total_tracks} songs`, uri: a.uri }, tracks, ctx: a.uri, hideAlbum: true }
   },
   playlist: async id => {
-    const p = await api(`/playlists/${id}?fields=name,uri,images,owner.display_name`)
-    const tracks = (await all(`/playlists/${id}/tracks?limit=100`, 3000)).map(x => x.track).filter(t => t?.uri && !t.uri.startsWith('spotify:local'))
+    const p = await api(`/playlists/${id}`)
+    const tracks = (await all(`/playlists/${id}/items?limit=100`, 3000)).map(x => x.item || x.track).filter(t => t?.uri && !t.uri.startsWith('spotify:local'))
     return { title: p.name, hero: { kind: 'Playlist', image: img(p.images), sub: `${p.owner.display_name} • ${tracks.length} songs`, uri: p.uri }, tracks, ctx: p.uri }
   },
   artist: async id => {
-    const [a, top, al] = await Promise.all([api('/artists/' + id), api(`/artists/${id}/top-tracks?market=from_token`), api(`/artists/${id}/albums?include_groups=album,single&limit=50`)])
-    return { title: a.name, hero: { kind: 'Artist', image: img(a.images), round: true, sub: `${(a.followers?.total || 0).toLocaleString()} followers`, uri: a.uri }, tracksTitle: 'Popular', tracks: top.tracks, cardsTitle: 'Discography', cards: al.items.map(x => card(x, x.release_date.slice(0, 4) + ' • ' + x.album_type)) }
+    // top-tracks was removed for dev-mode apps (Feb 2026), so search the artist's songs instead
+    const a = await api('/artists/' + id)
+    const [top, al] = await Promise.all([
+      api('/search?' + new URLSearchParams({ q: `artist:"${a.name}"`, type: 'track', limit: 10 })).catch(() => ({ tracks: { items: [] } })),
+      api(`/artists/${id}/albums?include_groups=album,single&limit=50`),
+    ])
+    return { title: a.name, hero: { kind: 'Artist', image: img(a.images), round: true, sub: a.genres?.slice(0, 3).join(' • ') || 'Artist', uri: a.uri }, tracksTitle: 'Popular', tracks: top.tracks.items.filter(t => t.artists.some(x => x.id === id)), cardsTitle: 'Discography', cards: al.items.map(x => card(x, x.release_date.slice(0, 4) + ' • ' + x.album_type)) }
   },
   search: async q => {
-    const j = await api('/search?' + new URLSearchParams({ q, type: 'track,album,artist,playlist', limit: 20 }))
+    const j = await api('/search?' + new URLSearchParams({ q, type: 'track,album,artist,playlist', limit: 10 }))
     return {
-      tracksTitle: 'Songs', tracks: j.tracks.items,
+      tracksTitle: 'Songs', tracks: j.tracks.items.filter(Boolean),
       sections: [
-        ['Artists', j.artists.items.map(x => card(x, 'Artist'))],
-        ['Albums', j.albums.items.map(x => card(x, artists(x)))],
+        ['Artists', j.artists.items.filter(Boolean).map(x => card(x, 'Artist'))],
+        ['Albums', j.albums.items.filter(Boolean).map(x => card(x, artists(x)))],
         ['Playlists', j.playlists.items.filter(Boolean).map(x => card(x, 'By ' + (x.owner?.display_name || '')))],
       ],
     }
@@ -105,7 +110,23 @@ function Console({ toast }) {
   const [err, setErr] = useState('')
   const [playlists, setPlaylists] = useState([])
   const [q, setQ] = useState('')
-  const [vinyl, setVinyl] = useState(false)
+  const [vinyl, setVinyl] = useState(false) // false | true | 'closing'
+  const [full, setFull] = useState(false)
+  const closeVinyl = () => setVinyl(v => (v ? 'closing' : v))
+  const toggleVinyl = () => (vinyl ? closeVinyl() : state?.item && setVinyl(true))
+
+  useEffect(() => {
+    const f = () => setFull(!!(document.fullscreenElement || document.webkitFullscreenElement))
+    document.addEventListener('fullscreenchange', f); document.addEventListener('webkitfullscreenchange', f)
+    return () => { document.removeEventListener('fullscreenchange', f); document.removeEventListener('webkitfullscreenchange', f) }
+  }, [])
+  const toggleFull = () => {
+    const d = document, el = d.documentElement
+    if (d.fullscreenElement || d.webkitFullscreenElement) return (d.exitFullscreen || d.webkitExitFullscreen).call(d)
+    const req = el.requestFullscreen || el.webkitRequestFullscreen
+    if (req) return req.call(el)
+    toast('On iPhone: tap Share → Add to Home Screen, then open it from there for full screen')
+  }
   const [navOpen, setNavOpen] = useState(false)
 
   const go = (...v) => { setView(v); setNavOpen(false); setVinyl(false) }
@@ -134,12 +155,13 @@ function Console({ toast }) {
   useEffect(() => {
     const k = e => {
       if (e.target.tagName === 'INPUT') { if (e.key === 'Escape') e.target.blur(); return }
-      if (e.key === 'Escape') setVinyl(false)
+      if (e.key === 'Escape') closeVinyl()
+      if (e.key === 'f') toggleFull()
       if (e.key === '/') { e.preventDefault(); document.querySelector('.search input').focus() }
       if (e.code === 'Space') { e.preventDefault(); controls.toggle() }
       if (e.shiftKey && e.key === 'ArrowRight') controls.next()
       if (e.shiftKey && e.key === 'ArrowLeft') controls.prev()
-      if (e.key === 'v' && state?.item) setVinyl(v => !v)
+      if (e.key === 'v') toggleVinyl()
     }
     addEventListener('keydown', k)
     return () => removeEventListener('keydown', k)
@@ -149,6 +171,7 @@ function Console({ toast }) {
     ctx ? controls.play({ context_uri: ctx, offset: { uri: tracks[i].uri } }) : controls.play({ uris: tracks.slice(i, i + 100).map(t => t.uri) })
 
   const nowUri = state?.item?.uri
+  const touch = matchMedia('(hover: none)').matches
   const playing = !!state?.is_playing
   const ctxPlaying = data?.hero?.uri && state?.context?.uri === data.hero.uri && playing
   const tabs = [['liked', 'Liked Songs', 'Playlist'], ['top', 'Top Tracks', 'Playlist'], ['recent', 'Recently Played', 'History']]
@@ -169,6 +192,7 @@ function Console({ toast }) {
           <select value={deviceId || ''} onChange={e => controls.selectDevice(e.target.value)} onFocus={() => controls.loadDevices().catch(() => {})} title="Playback device">
             {devices.length ? devices.map(d => <option key={d.id} value={d.id}>{d.name}</option>) : <option value="">No devices</option>}
           </select>
+          <button className="fs" onClick={toggleFull} title={full ? 'Exit full screen' : 'Full screen'}>{full ? <Collapse size={18} /> : <Expand size={18} />}</button>
           <button className="pill" onClick={() => { logout(); location.reload() }}>Log out</button>
         </div>
       </header>
@@ -193,7 +217,7 @@ function Console({ toast }) {
         </nav>
 
         <section className={'content' + (vinyl ? ' is-vinyl' : '')}>
-          {vinyl ? <Vinyl track={state?.item} playing={playing} onClose={() => setVinyl(false)} />
+          {vinyl ? <Vinyl track={state?.item} playing={playing} closing={vinyl === 'closing'} onClose={closeVinyl} onClosed={() => setVinyl(false)} />
             : err ? <div className="pad"><h1>Something went wrong</h1><p className="muted">{err}</p></div>
             : !data ? <div className="pad skeleton">{Array.from({ length: 10 }, (_, i) => <div key={i} />)}</div>
             : <>
@@ -231,7 +255,7 @@ function Console({ toast }) {
                     {data.tracks.map((t, i) => {
                       const cur = t.uri === nowUri
                       return (
-                        <div key={t.id + i} className={'row' + (cur ? ' playing' : '')} onDoubleClick={() => playTrack(data.tracks, i, data.ctx)}>
+                        <div key={t.id + i} className={'row' + (cur ? ' playing' : '')} onDoubleClick={() => playTrack(data.tracks, i, data.ctx)} onClick={() => touch && playTrack(data.tracks, i, data.ctx)}>
                           <span className="n">
                             <span className="num">{cur && playing ? <i className="eq"><b /><b /><b /><b /></i> : i + 1}</span>
                             <button className="row-play" onClick={() => cur ? controls.toggle() : playTrack(data.tracks, i, data.ctx)}>
@@ -272,7 +296,7 @@ function Console({ toast }) {
       </main>
 
       <Player state={state} progress={progress} controls={controls} vinyl={vinyl} deviceName={device?.name}
-        onArt={() => setVinyl(v => !v)} />
+        onArt={toggleVinyl} />
     </div>
   )
 }
