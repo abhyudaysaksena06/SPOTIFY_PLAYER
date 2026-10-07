@@ -18,15 +18,14 @@ function labelRect(deck) {
 }
 const artRect = () => document.querySelector('.player .now-art img')?.getBoundingClientRect()
 
-// Flies a copy of the cover between two rects, morphing square ↔ circle.
-function fly(url, from, to, fromRadius, toRadius, fromRot = 0) {
-  const el = document.createElement('div')
-  el.className = 'morph'
-  el.style.backgroundImage = `url(${url})`
-  document.body.appendChild(el)
-  const frame = (r, radius, rot) => ({ left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px', borderRadius: radius, transform: `rotate(${rot}deg)` })
-  const anim = el.animate([frame(from, fromRadius, fromRot), frame(to, toRadius, 0)], { duration: DUR, easing: EASE, fill: 'forwards' })
-  return anim.finished.catch(() => {}).then(() => el)
+// Transform that shrinks the whole deck so its label sits exactly on top of the player-bar cover.
+function deckFromArt(deck, art) {
+  const d = deck.getBoundingClientRect()
+  const label = labelRect(deck)
+  const scale = art.width / label.width
+  const dx = art.left + art.width / 2 - (d.left + d.width / 2)
+  const dy = art.top + art.height / 2 - (d.top + d.height / 2)
+  return { transform: `translate(${dx}px, ${dy}px) scale(${scale})`, radius: 4 / scale + 'px' }
 }
 
 // Full-screen turntable "screen saver". Spin the record with a finger to scrub; tap it to go back.
@@ -39,25 +38,38 @@ export default function Vinyl({ state, progress, controls, closing, onClose, onC
   const record = useRef(null)
   const angle = useRef(0)
   const drag = useRef(null)
+  const unwind = useRef(null)
   const [ready, setReady] = useState(false)
   const [scrub, setScrub] = useState(null) // song position while scratching / dragging the bar
 
-  // opening: cover photo flies from the player bar and becomes the record label
-  useLayoutEffect(() => {
+  // Opening: the whole record grows out of the cover photo. The photo *is* the label, so it
+  // stays put as a square, rounds into a circle, and the grooves/arm fade in around it.
+  // Closing runs the same animation backwards into the player bar.
+  const morph = (forward, done) => {
     const from = artRect()
-    if (!art || !from || matchMedia('(prefers-reduced-motion: reduce)').matches) return setReady(true)
-    let el
-    fly(art, from, labelRect(deck.current), '4px', '50%').then(e => { el = e; setReady(true); requestAnimationFrame(() => el.remove()) })
-    return () => el?.remove()
-  }, [])
+    if (!art || !from || matchMedia('(prefers-reduced-motion: reduce)').matches) return done()
+    const { transform, radius } = deckFromArt(deck.current, from)
+    const opt = { duration: DUR, easing: EASE, fill: 'both', direction: forward ? 'normal' : 'reverse' }
+    const label = deck.current.querySelector('.label')
+    const parts = deck.current.querySelectorAll('.grooves, .shine, .tonearm')
+    const anims = [
+      deck.current.animate([{ transform }, { transform: 'none' }], opt),
+      label.animate([{ borderRadius: radius, boxShadow: 'none' }, { borderRadius: '50%' }], opt),
+      record.current.animate([{ backgroundColor: 'transparent', boxShadow: 'none' }, {}], opt),
+      ...[...parts].map(el => el.animate([{ opacity: 0 }, { opacity: 0, offset: forward ? 0.25 : 0.4 }, { opacity: 1 }], opt)),
+    ]
+    anims[0].finished.catch(() => {}).then(() => { done(); if (forward) anims.forEach(x => x.cancel()) })
+  }
 
-  // closing: label flies back down to the player bar
+  useLayoutEffect(() => { morph(true, () => setReady(true)) }, [])
+
   useEffect(() => {
     if (!closing) return
-    const to = artRect()
-    if (!art || !to || !ready) return onClosed()
     setReady(false)
-    fly(art, labelRect(deck.current), to, '50%', '4px', angle.current % 360).then(el => { onClosed(); requestAnimationFrame(() => el.remove()) })
+    // unwind the spin so the cover lands upright
+    const start = angle.current % 360, target = start > 180 ? 360 : 0, t0 = performance.now()
+    unwind.current = now => { const k = Math.min(1, (now - t0) / (DUR * 0.8)); angle.current = start + (target - start) * (1 - Math.pow(1 - k, 3)) }
+    morph(false, onClosed)
   }, [closing])
 
   // spin loop: the record turns while playing, and follows the finger while scratching
@@ -66,7 +78,8 @@ export default function Vinyl({ state, progress, controls, closing, onClose, onC
   useEffect(() => {
     let raf, last = performance.now()
     const loop = now => {
-      if (spinning.current && !drag.current) angle.current += SPIN * (now - last) / 1000
+      if (unwind.current) unwind.current(now)
+      else if (spinning.current && !drag.current) angle.current += SPIN * (now - last) / 1000
       last = now
       if (record.current) record.current.style.transform = `rotate(${angle.current}deg)`
       raf = requestAnimationFrame(loop)
