@@ -61,8 +61,10 @@ export async function api(path, opts = {}) {
     headers: { Authorization: 'Bearer ' + (await token()), 'Content-Type': 'application/json' },
   })
   if (r.status === 204 || r.status === 202) return null
+  // player commands can reply with a plain-text id instead of JSON
   const t = await r.text()
-  const j = t ? JSON.parse(t) : null
+  let j = null
+  try { j = t ? JSON.parse(t) : null } catch {}
   if (!r.ok) throw new Error(j?.error?.message || r.statusText)
   return j
 }

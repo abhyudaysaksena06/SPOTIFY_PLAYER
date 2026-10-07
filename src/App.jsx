@@ -9,7 +9,23 @@ const card = (x, sub) => ({ id: x.id, type: x.type, name: x.name, image: img(x.i
 
 /* ---------- data loaders for each view ---------- */
 const loaders = {
-  albums: async () => ({ title: 'Your Albums', cards: (await all('/me/albums?limit=50')).map(x => card(x.album, artists(x.album))) }),
+  home: async () => {
+    const [saved, liked, pls] = await Promise.all([
+      all('/me/albums?limit=50').catch(() => []),
+      all('/me/tracks?limit=50', 300).catch(() => []),
+      all('/me/playlists?limit=50').catch(() => []),
+    ])
+    // albums of your liked songs, so Home isn't empty when nothing is saved in "Albums"
+    const seen = new Set(saved.map(x => x.album.id))
+    const fromLiked = []
+    for (const { track } of liked) if (track?.album?.id && !seen.has(track.album.id)) { seen.add(track.album.id); fromLiked.push(card(track.album, artists(track.album))) }
+    const sections = [
+      ['Your Albums', saved.map(x => card(x.album, artists(x.album)))],
+      ['Albums from your Liked Songs', fromLiked],
+      ['Your Playlists', pls.filter(Boolean).map(x => card(x, 'By ' + (x.owner?.display_name || '')))],
+    ]
+    return { title: 'Home', sections, empty: sections.every(s => !s[1].length) }
+  },
   liked: async () => {
     const tracks = (await all('/me/tracks?limit=50', 2000)).map(x => x.track)
     return { title: 'Liked Songs', hero: { kind: 'Playlist', tile: 'liked', sub: `${tracks.length} songs` }, tracks }
@@ -43,7 +59,7 @@ const loaders = {
   },
 }
 
-const TILES = { liked: <Heart size={24} />, recent: <Clock size={24} />, top: <Play size={24} />, albums: <Disc size={24} /> }
+const TILES = { liked: <Heart size={24} />, recent: <Clock size={24} />, top: <Play size={24} />, home: <Disc size={24} /> }
 
 export default function App() {
   const [authed, setAuthed] = useState(loggedIn())
@@ -84,7 +100,7 @@ function Login() {
 
 function Console({ toast }) {
   const { state, progress, devices, deviceId, controls } = usePlayer(toast)
-  const [view, setView] = useState(['albums'])
+  const [view, setView] = useState(['home'])
   const [data, setData] = useState(null)
   const [err, setErr] = useState('')
   const [playlists, setPlaylists] = useState([])
@@ -135,7 +151,7 @@ function Console({ toast }) {
   const nowUri = state?.item?.uri
   const playing = !!state?.is_playing
   const ctxPlaying = data?.hero?.uri && state?.context?.uri === data.hero.uri && playing
-  const tabs = [['liked', 'Liked Songs', 'Playlist'], ['albums', 'Your Albums', 'Collection'], ['top', 'Top Tracks', 'Playlist'], ['recent', 'Recently Played', 'History']]
+  const tabs = [['liked', 'Liked Songs', 'Playlist'], ['top', 'Top Tracks', 'Playlist'], ['recent', 'Recently Played', 'History']]
   const cardGroups = [...(data?.cards ? [[data.cardsTitle, data.cards]] : []), ...(data?.sections || [])]
   const device = devices.find(d => d.id === deviceId)
 
@@ -143,7 +159,7 @@ function Console({ toast }) {
     <div className="app">
       <header>
         <button className="burger" onClick={() => setNavOpen(o => !o)}><Library size={20} /></button>
-        <button className={'home' + (view[0] === 'albums' ? ' on' : '')} onClick={() => { setQ(''); go('albums') }} title="Home"><Home size={22} /></button>
+        <button className={'home' + (view[0] === 'home' ? ' on' : '')} onClick={() => { setQ(''); go('home') }} title="Home"><Home size={22} /></button>
         <label className="search">
           <Search size={20} />
           <input value={q} onChange={e => setQ(e.target.value)} placeholder="What do you want to play?" />
@@ -193,6 +209,7 @@ function Console({ toast }) {
                   </div>
                 </div>
               ) : data.title && <h1 className="page-title">{data.title}</h1>}
+              {data.empty && <p className="pad muted">Nothing in your library yet. Save some albums or like some songs in Spotify, or use search.</p>}
 
               <div className="pad">
                 {data.hero && data.tracks?.length > 0 && (
