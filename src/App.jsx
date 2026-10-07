@@ -123,13 +123,16 @@ function Console({ toast }) {
     return stopRemote
   }, [])
   useEffect(() => {
+    if (link === 'linked') toast('Connected: scratches will play on your Spotify device')
+    if (link === 'speaker-linked') toast('Phone connected — scratches will play here')
+    if (link === 'error') toast('Could not connect the scratch speaker (network may block it)')
     if (link === 'taken') { toast('Another tab is already the scratch speaker'); me && startController(me, setLink) }
   }, [link])
   const toggleSpeaker = () => {
     if (!me) return
     if (isSpeaker) return startController(me, setLink)
     startSpeaker(me, setLink)
-    toast('This device will now play the scratch sound. Keep this tab open.')
+    toast('Speaker on — you should hear a test scratch. Keep this tab open.')
   }
   const closeVinyl = () => setVinyl(v => (v ? 'closing' : v))
   const toggleVinyl = () => (vinyl ? closeVinyl() : state?.item && setVinyl(true))

@@ -1,7 +1,7 @@
 // Peer-to-peer link between the phone (controller) and the device playing Spotify (speaker).
 // Both tabs are logged into the same Spotify account, so the speaker's peer id is derived from the user id.
 import Peer from 'peerjs'
-import { scratchSpeed, scratchStart, scratchStop, setRemote } from './scratch'
+import { scratchSpeed, scratchStart, scratchStop, scratchTest, setRemote } from './scratch'
 
 const idFor = userId => 'spconsole-' + userId.replace(/[^a-zA-Z0-9]/g, '')
 let peer = null
@@ -17,7 +17,7 @@ function reset() {
 // This tab plays the scratch sound for whoever is spinning the record.
 export function startSpeaker(userId, onStatus) {
   reset()
-  scratchStart() // unlock audio during the click that enabled speaker mode
+  scratchTest() // unlock audio during the click, and let you hear that this device works
   peer = new Peer(idFor(userId))
   peer.on('open', () => onStatus('speaker'))
   peer.on('connection', c => {
