@@ -3,41 +3,47 @@ import { REDIRECT, all, api, artists, clientId, fmt, handleRedirect, img, logged
 import { usePlayer } from './usePlayer'
 import Player from './components/Player'
 import Vinyl from './components/Vinyl'
+import { Clock, Disc, Heart, Home, Library, Pause, Play, Search } from './components/Icons'
 
 const card = (x, sub) => ({ id: x.id, type: x.type, name: x.name, image: img(x.images, 1), sub })
 
 /* ---------- data loaders for each view ---------- */
 const loaders = {
-  albums: async () => ({ title: 'My Albums', cards: (await all('/me/albums?limit=50')).map(x => card(x.album, artists(x.album))) }),
-  liked: async () => ({ title: 'Liked Songs', tracks: (await all('/me/tracks?limit=50', 2000)).map(x => x.track) }),
-  recent: async () => ({ title: 'Recently Played', tracks: (await api('/me/player/recently-played?limit=50')).items.map(x => x.track) }),
-  top: async () => ({ title: 'Your Top Tracks', tracks: (await api('/me/top/tracks?limit=50')).items }),
+  albums: async () => ({ title: 'Your Albums', cards: (await all('/me/albums?limit=50')).map(x => card(x.album, artists(x.album))) }),
+  liked: async () => {
+    const tracks = (await all('/me/tracks?limit=50', 2000)).map(x => x.track)
+    return { title: 'Liked Songs', hero: { kind: 'Playlist', tile: 'liked', sub: `${tracks.length} songs` }, tracks }
+  },
+  recent: async () => ({ title: 'Recently Played', hero: { kind: 'History', tile: 'recent', sub: 'Your last 50 plays' }, tracks: (await api('/me/player/recently-played?limit=50')).items.map(x => x.track) }),
+  top: async () => ({ title: 'Your Top Tracks', hero: { kind: 'Playlist', tile: 'top', sub: 'Most played lately' }, tracks: (await api('/me/top/tracks?limit=50')).items }),
   album: async id => {
     const a = await api('/albums/' + id)
     const tracks = (await all(`/albums/${id}/tracks?limit=50`)).map(t => ({ ...t, album: a }))
-    return { title: a.name, hero: { kind: 'Album · ' + a.release_date?.slice(0, 4), image: img(a.images), sub: `${artists(a)} · ${a.total_tracks} songs`, uri: a.uri }, tracks, ctx: a.uri, hideAlbum: true }
+    return { title: a.name, hero: { kind: a.album_type === 'single' ? 'Single' : 'Album', image: img(a.images), sub: `${artists(a)} • ${a.release_date?.slice(0, 4)} • ${a.total_tracks} songs`, uri: a.uri }, tracks, ctx: a.uri, hideAlbum: true }
   },
   playlist: async id => {
     const p = await api(`/playlists/${id}?fields=name,uri,images,owner.display_name`)
     const tracks = (await all(`/playlists/${id}/tracks?limit=100`, 3000)).map(x => x.track).filter(t => t?.uri && !t.uri.startsWith('spotify:local'))
-    return { title: p.name, hero: { kind: 'Playlist', image: img(p.images), sub: `${p.owner.display_name} · ${tracks.length} songs`, uri: p.uri }, tracks, ctx: p.uri }
+    return { title: p.name, hero: { kind: 'Playlist', image: img(p.images), sub: `${p.owner.display_name} • ${tracks.length} songs`, uri: p.uri }, tracks, ctx: p.uri }
   },
   artist: async id => {
     const [a, top, al] = await Promise.all([api('/artists/' + id), api(`/artists/${id}/top-tracks?market=from_token`), api(`/artists/${id}/albums?include_groups=album,single&limit=50`)])
-    return { title: a.name, hero: { kind: 'Artist', image: img(a.images), sub: `${(a.followers?.total || 0).toLocaleString()} followers`, uri: a.uri }, tracks: top.tracks, cardsTitle: 'Discography', cards: al.items.map(x => card(x, x.release_date.slice(0, 4) + ' · ' + x.album_type)) }
+    return { title: a.name, hero: { kind: 'Artist', image: img(a.images), round: true, sub: `${(a.followers?.total || 0).toLocaleString()} followers`, uri: a.uri }, tracksTitle: 'Popular', tracks: top.tracks, cardsTitle: 'Discography', cards: al.items.map(x => card(x, x.release_date.slice(0, 4) + ' • ' + x.album_type)) }
   },
   search: async q => {
     const j = await api('/search?' + new URLSearchParams({ q, type: 'track,album,artist,playlist', limit: 20 }))
     return {
-      title: `Results for "${q}"`, tracks: j.tracks.items,
+      tracksTitle: 'Songs', tracks: j.tracks.items,
       sections: [
         ['Artists', j.artists.items.map(x => card(x, 'Artist'))],
         ['Albums', j.albums.items.map(x => card(x, artists(x)))],
-        ['Playlists', j.playlists.items.filter(Boolean).map(x => card(x, x.owner?.display_name))],
+        ['Playlists', j.playlists.items.filter(Boolean).map(x => card(x, 'By ' + (x.owner?.display_name || '')))],
       ],
     }
   },
 }
+
+const TILES = { liked: <Heart size={24} />, recent: <Clock size={24} />, top: <Play size={24} />, albums: <Disc size={24} /> }
 
 export default function App() {
   const [authed, setAuthed] = useState(loggedIn())
@@ -60,13 +66,16 @@ function Login() {
     <div className="login">
       <div className="box">
         <div className="login-disc" />
-        <h1>Spotify<span>.</span>console</h1>
-        <ol>
-          <li>Open <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noreferrer">developer.spotify.com/dashboard</a> → <b>Create app</b></li>
-          <li>Add Redirect URI: <code>{REDIRECT}</code></li>
-          <li>Tick <b>Web API</b>, save, copy the <b>Client ID</b></li>
-        </ol>
-        {!import.meta.env.VITE_SPOTIFY_CLIENT_ID && <input value={cid} onChange={e => setCid(e.target.value.trim())} placeholder="Paste Client ID" />}
+        <h1>Music Console</h1>
+        <p className="muted">Control the Spotify app on your laptop from anywhere.</p>
+        {!import.meta.env.VITE_SPOTIFY_CLIENT_ID && <>
+          <ol>
+            <li>Open <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noreferrer">developer.spotify.com/dashboard</a> → <b>Create app</b></li>
+            <li>Add Redirect URI: <code>{REDIRECT}</code></li>
+            <li>Tick <b>Web API</b>, save, copy the <b>Client ID</b></li>
+          </ol>
+          <input value={cid} onChange={e => setCid(e.target.value.trim())} placeholder="Client ID" />
+        </>}
         <button className="primary" disabled={!cid} onClick={() => login(cid)}>Log in with Spotify</button>
       </div>
     </div>
@@ -83,7 +92,7 @@ function Console({ toast }) {
   const [vinyl, setVinyl] = useState(false)
   const [navOpen, setNavOpen] = useState(false)
 
-  const go = (...v) => { setView(v); setNavOpen(false) }
+  const go = (...v) => { setView(v); setNavOpen(false); setVinyl(false) }
 
   useEffect(() => {
     all('/me/playlists?limit=50').then(p => setPlaylists(p.filter(Boolean))).catch(e => {
@@ -108,13 +117,13 @@ function Console({ toast }) {
 
   useEffect(() => {
     const k = e => {
-      if (vinyl) return
       if (e.target.tagName === 'INPUT') { if (e.key === 'Escape') e.target.blur(); return }
-      if (e.key === '/') { e.preventDefault(); document.querySelector('.search').focus() }
+      if (e.key === 'Escape') setVinyl(false)
+      if (e.key === '/') { e.preventDefault(); document.querySelector('.search input').focus() }
       if (e.code === 'Space') { e.preventDefault(); controls.toggle() }
       if (e.shiftKey && e.key === 'ArrowRight') controls.next()
       if (e.shiftKey && e.key === 'ArrowLeft') controls.prev()
-      if (e.key === 'v' && state?.item) setVinyl(true)
+      if (e.key === 'v' && state?.item) setVinyl(v => !v)
     }
     addEventListener('keydown', k)
     return () => removeEventListener('keydown', k)
@@ -124,82 +133,129 @@ function Console({ toast }) {
     ctx ? controls.play({ context_uri: ctx, offset: { uri: tracks[i].uri } }) : controls.play({ uris: tracks.slice(i, i + 100).map(t => t.uri) })
 
   const nowUri = state?.item?.uri
-  const tabs = [['albums', '💿', 'My Albums'], ['liked', '♥', 'Liked Songs'], ['recent', '🕘', 'Recently Played'], ['top', '🔥', 'Top Tracks']]
+  const playing = !!state?.is_playing
+  const ctxPlaying = data?.hero?.uri && state?.context?.uri === data.hero.uri && playing
+  const tabs = [['liked', 'Liked Songs', 'Playlist'], ['albums', 'Your Albums', 'Collection'], ['top', 'Top Tracks', 'Playlist'], ['recent', 'Recently Played', 'History']]
   const cardGroups = [...(data?.cards ? [[data.cardsTitle, data.cards]] : []), ...(data?.sections || [])]
+  const device = devices.find(d => d.id === deviceId)
 
   return (
     <div className="app">
       <header>
-        <button className="burger" onClick={() => setNavOpen(o => !o)}>☰</button>
-        <h1 onClick={() => go('albums')}>Spotify<span>.</span>console</h1>
-        <input className="search" value={q} onChange={e => setQ(e.target.value)} placeholder="Search songs, albums, artists…   /" />
-        <select value={deviceId || ''} onChange={e => controls.selectDevice(e.target.value)} onFocus={() => controls.loadDevices().catch(() => {})} title="Playback device">
-          {devices.length ? devices.map(d => <option key={d.id} value={d.id}>{d.type === 'Computer' ? '💻' : '📱'} {d.name}</option>) : <option value="">No devices — open Spotify</option>}
-        </select>
-        <button className="ghost" onClick={() => { logout(); location.reload() }}>Log out</button>
+        <button className="burger" onClick={() => setNavOpen(o => !o)}><Library size={20} /></button>
+        <button className={'home' + (view[0] === 'albums' ? ' on' : '')} onClick={() => { setQ(''); go('albums') }} title="Home"><Home size={22} /></button>
+        <label className="search">
+          <Search size={20} />
+          <input value={q} onChange={e => setQ(e.target.value)} placeholder="What do you want to play?" />
+          {q && <button className="clear" onClick={() => setQ('')}>✕</button>}
+        </label>
+        <div className="hdr-right">
+          <select value={deviceId || ''} onChange={e => controls.selectDevice(e.target.value)} onFocus={() => controls.loadDevices().catch(() => {})} title="Playback device">
+            {devices.length ? devices.map(d => <option key={d.id} value={d.id}>{d.name}</option>) : <option value="">No devices</option>}
+          </select>
+          <button className="pill" onClick={() => { logout(); location.reload() }}>Log out</button>
+        </div>
       </header>
 
       <main>
         <nav className={navOpen ? 'open' : ''}>
-          {tabs.map(([v, ic, label]) => <button key={v} className={'tab' + (view[0] === v ? ' on' : '')} onClick={() => go(v)}><span>{ic}</span>{label}</button>)}
-          <h3>Playlists</h3>
-          {playlists.map(p => <button key={p.id} className={'tab' + (view[1] === p.id ? ' on' : '')} onClick={() => go('playlist', p.id)}>{p.name}</button>)}
+          <div className="lib-head"><Library size={22} /> Your Library</div>
+          <div className="lib-list">
+            {tabs.map(([v, label, sub]) => (
+              <button key={v} className={'lib-item' + (view[0] === v ? ' on' : '')} onClick={() => go(v)}>
+                <span className={'tile tile-' + v}>{TILES[v]}</span>
+                <span className="lib-text"><b>{label}</b><small>{sub}</small></span>
+              </button>
+            ))}
+            {playlists.map(p => (
+              <button key={p.id} className={'lib-item' + (view[1] === p.id ? ' on' : '')} onClick={() => go('playlist', p.id)}>
+                <span className="tile">{img(p.images, 2) ? <img loading="lazy" src={img(p.images, 2)} alt="" /> : <Disc size={24} />}</span>
+                <span className="lib-text"><b className={state?.context?.uri === p.uri ? 'green' : ''}>{p.name}</b><small>Playlist • {p.owner?.display_name}</small></span>
+              </button>
+            ))}
+          </div>
         </nav>
 
-        <section className="content">
-          {err ? <><h2>Something went wrong</h2><p className="muted">{err}</p></>
-            : !data ? <div className="skeleton">{Array.from({ length: 10 }, (_, i) => <div key={i} />)}</div>
+        <section className={'content' + (vinyl ? ' is-vinyl' : '')}>
+          {vinyl ? <Vinyl track={state?.item} playing={playing} onClose={() => setVinyl(false)} />
+            : err ? <div className="pad"><h1>Something went wrong</h1><p className="muted">{err}</p></div>
+            : !data ? <div className="pad skeleton">{Array.from({ length: 10 }, (_, i) => <div key={i} />)}</div>
             : <>
               {data.hero ? (
                 <div className="hero">
-                  <img src={data.hero.image} alt="" />
-                  <div>
+                  <div className="hero-bg" style={data.hero.image ? { backgroundImage: `url(${data.hero.image})` } : undefined} data-tile={data.hero.tile} />
+                  {data.hero.image ? <img className={data.hero.round ? 'round' : ''} src={data.hero.image} alt="" />
+                    : <span className={'hero-tile tile-' + data.hero.tile}>{TILES[data.hero.tile]}</span>}
+                  <div className="hero-text">
                     <small>{data.hero.kind}</small>
-                    <h2>{data.title}</h2>
-                    <p className="muted">{data.hero.sub}</p>
-                    <button className="primary" onClick={() => controls.play({ context_uri: data.hero.uri })}>▶ Play</button>
+                    <h1 className={data.title.length > 24 ? 'long' : ''}>{data.title}</h1>
+                    <p>{data.hero.sub}</p>
                   </div>
                 </div>
-              ) : <h2>{data.title} <small className="muted">{data.sections ? '' : (data.tracks || data.cards).length}</small></h2>}
+              ) : data.title && <h1 className="page-title">{data.title}</h1>}
 
-              {data.tracks && <>
-                {data.sections && <h3>Songs</h3>}
-                {data.hero?.kind === 'Artist' && <h3>Popular</h3>}
-                <div className="tracks">
-                  {data.tracks.map((t, i) => (
-                    <div key={t.id + i} className={'row' + (t.uri === nowUri ? ' playing' : '')} onClick={() => playTrack(data.tracks, i, data.ctx)}>
-                      <span className="n">{t.uri === nowUri && state?.is_playing ? <i className="eq"><b /><b /><b /></i> : i + 1}</span>
-                      {!data.hideAlbum && <img loading="lazy" src={img(t.album?.images, 2)} alt="" />}
-                      <div className="t"><b>{t.name}</b><small>{artists(t)}</small></div>
-                      {!data.hideAlbum && <span className="al" onClick={e => { e.stopPropagation(); go('album', t.album.id) }}>{t.album?.name}</span>}
-                      <span className="d">{fmt(t.duration_ms)}</span>
-                    </div>
-                  ))}
-                </div>
-              </>}
+              <div className="pad">
+                {data.hero && data.tracks?.length > 0 && (
+                  <div className="action-bar">
+                    <button className="big-play" onClick={() => ctxPlaying ? controls.toggle() : data.hero.uri ? controls.play({ context_uri: data.hero.uri }) : playTrack(data.tracks, 0)}>
+                      {ctxPlaying ? <Pause size={22} /> : <Play size={22} />}
+                    </button>
+                  </div>
+                )}
 
-              {cardGroups.map(([title, cards]) => cards.length > 0 && (
-                <div key={title || 'cards'}>
-                  {title && <h3>{title}</h3>}
-                  <div className="grid">
-                    {cards.map(c => (
-                      <div key={c.id} className="card" onClick={() => go(c.type, c.id)}>
-                        <div className={'cover' + (c.type === 'artist' ? ' round' : '')}>
-                          {c.image ? <img loading="lazy" src={c.image} alt="" /> : <span>♪</span>}
-                          {c.type !== 'artist' && <button className="fab" onClick={e => { e.stopPropagation(); controls.play({ context_uri: `spotify:${c.type}:${c.id}` }) }}>▶</button>}
-                        </div>
-                        <b>{c.name}</b><small>{c.sub}</small>
+                {data.tracks?.length > 0 && <>
+                  {data.tracksTitle && <h2>{data.tracksTitle}</h2>}
+                  <div className={'tracks' + (data.hideAlbum ? ' no-album' : '')}>
+                    {!data.sections && (
+                      <div className="row head">
+                        <span className="n">#</span><span>Title</span>{!data.hideAlbum && <span className="al">Album</span>}<span className="d"><Clock /></span>
                       </div>
-                    ))}
+                    )}
+                    {data.tracks.map((t, i) => {
+                      const cur = t.uri === nowUri
+                      return (
+                        <div key={t.id + i} className={'row' + (cur ? ' playing' : '')} onDoubleClick={() => playTrack(data.tracks, i, data.ctx)}>
+                          <span className="n">
+                            <span className="num">{cur && playing ? <i className="eq"><b /><b /><b /><b /></i> : i + 1}</span>
+                            <button className="row-play" onClick={() => cur ? controls.toggle() : playTrack(data.tracks, i, data.ctx)}>
+                              {cur && playing ? <Pause size={14} /> : <Play size={14} />}
+                            </button>
+                          </span>
+                          <span className="t">
+                            {!data.hideAlbum && <img loading="lazy" src={img(t.album?.images, 2)} alt="" />}
+                            <span><b>{t.name}</b><small>{t.explicit && <i className="e">E</i>}{t.artists.map((a, k) => <span key={a.id}>{k > 0 && ', '}<a onClick={() => go('artist', a.id)}>{a.name}</a></span>)}</small></span>
+                          </span>
+                          {!data.hideAlbum && <span className="al"><a onClick={() => go('album', t.album.id)}>{t.album?.name}</a></span>}
+                          <span className="d">{fmt(t.duration_ms)}</span>
+                        </div>
+                      )
+                    })}
                   </div>
-                </div>
-              ))}
+                </>}
+
+                {cardGroups.map(([title, cards]) => cards.length > 0 && (
+                  <div key={title || 'cards'}>
+                    {title && <h2>{title}</h2>}
+                    <div className="grid">
+                      {cards.map(c => (
+                        <div key={c.id} className="card" onClick={() => go(c.type, c.id)}>
+                          <div className={'cover' + (c.type === 'artist' ? ' round' : '')}>
+                            {c.image ? <img loading="lazy" src={c.image} alt="" /> : <Disc size={40} />}
+                            <button className="fab" onClick={e => { e.stopPropagation(); controls.play({ context_uri: `spotify:${c.type}:${c.id}` }) }}><Play size={20} /></button>
+                          </div>
+                          <b>{c.name}</b><small>{c.sub}</small>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </>}
         </section>
       </main>
 
-      <Player state={state} progress={progress} controls={controls} onArt={() => setVinyl(true)} />
-      {vinyl && <Vinyl track={state?.item} playing={!!state?.is_playing} onClose={() => setVinyl(false)} />}
+      <Player state={state} progress={progress} controls={controls} vinyl={vinyl} deviceName={device?.name}
+        onArt={() => setVinyl(v => !v)} />
     </div>
   )
 }
