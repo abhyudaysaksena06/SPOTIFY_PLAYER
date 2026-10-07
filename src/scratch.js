@@ -6,9 +6,11 @@ let remote = null // open PeerJS connection to a speaker tab, if any
 export const setRemote = c => { remote = c }
 const send = m => { if (remote?.open) { remote.send(m); return true } return false }
 
-// Same mapping the seek uses (Vinyl.jsx): 1° of rotation = 60ms of audio. So the sound's playback speed
-// equals exactly how fast the finger moves through the song: 16.7°/s = normal speed, 50°/s = 3×, etc.
-export const MS_PER_DEG = 60
+// Seeking: one full turn of the record = 10 minutes of the song.
+export const MS_PER_DEG = 600000 / 360
+// Sound: a hand turning the record at this many degrees/second plays the groove at normal speed.
+// Playback speed and loudness scale linearly with the finger from there.
+const SOUND_DEG_PER_SEC = 90
 let smooth = 0, lastMove = 0, watchdog = 0
 
 // One second of a synthetic "ahh" stab: a buzzy vowel-like tone with a noisy attack and groove crackle.
@@ -68,8 +70,8 @@ function apply(degPerSec) {
   smooth = Math.abs(degPerSec) < 1 ? 0 : smooth * 0.35 + degPerSec * 0.65
   const v = Math.abs(smooth)
   const t = ctx.currentTime
-  const rate = Math.max(0.0001, Math.min(24, v * MS_PER_DEG / 1000))
-  const loud = v < 3 ? 0 : Math.min(1, Math.pow(v / 60, 0.5))
+  const rate = Math.max(0.0001, Math.min(8, v / SOUND_DEG_PER_SEC))
+  const loud = v < 4 ? 0 : Math.min(1, Math.pow(v / SOUND_DEG_PER_SEC, 0.6))
   const forward = smooth >= 0
   fwd.playbackRate.setTargetAtTime(rate, t, 0.004)
   rev.playbackRate.setTargetAtTime(rate, t, 0.004)
