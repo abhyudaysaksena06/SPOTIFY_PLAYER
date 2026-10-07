@@ -1,14 +1,13 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { artists, fmt, img } from '../spotify'
 import { Bar } from './Player'
-import { scratchSpeed, scratchStart, scratchStop } from '../scratch'
+import { MS_PER_DEG, scratchSpeed, scratchStart, scratchStop } from '../scratch'
 import { Next, Pause, Play, Prev, Repeat, Shuffle } from './Icons'
 
 const LABEL_INSET = 0.17 // label size = 66% of the record (keep in sync with .label in CSS)
 const EASE = 'cubic-bezier(.2,.8,.2,1)'
 const DUR = 700
 const SPIN = 30        // degrees per second while playing (one turn every 12s)
-const MS_PER_DEG = 60  // scratching: one full turn = ~21.6s of the song
 const TAP_DEG = 4      // less rotation than this counts as a tap (closes the view)
 const LIVE_SEEK_MS = 300 // while scratching, jump the laptop's playback this often
 
@@ -83,7 +82,7 @@ export default function Vinyl({ state, progress, controls, closing, onClose, onC
   const down = e => {
     if (!ready) return
     e.currentTarget.setPointerCapture(e.pointerId)
-    drag.current = { last: pointerAngle(e), total: 0, start: progress, t: performance.now(), seekAt: 0 }
+    drag.current = { last: pointerAngle(e), total: 0, start: progress, t: performance.now(), seekAt: 0, acc: 0 }
     scratchStart()
   }
   const move = e => {
@@ -98,10 +97,9 @@ export default function Vinyl({ state, progress, controls, closing, onClose, onC
     d.total += delta
     angle.current += delta
     if (Math.abs(d.total) < TAP_DEG || !dur) return
-    scratchSpeed(delta / Math.max(1, now - d.t) * 1000)
-    d.t = now
-    clearTimeout(d.still)
-    d.still = setTimeout(scratchStop, 80) // finger held still → silence
+    // velocity from the actual finger motion; ignore ultra-short gaps that cause spikes
+    const dt = now - d.t
+    if (dt >= 8) { scratchSpeed((d.acc + delta) / dt * 1000); d.acc = 0; d.t = now } else d.acc += delta
     const pos = Math.max(0, Math.min(dur - 1000, d.start + d.total * MS_PER_DEG))
     setScrub(pos)
     if (now - d.seekAt > LIVE_SEEK_MS) { d.seekAt = now; controls.seek(pos) }
@@ -111,7 +109,6 @@ export default function Vinyl({ state, progress, controls, closing, onClose, onC
     drag.current = null
     scratchStop()
     if (!d) return
-    clearTimeout(d.still)
     if (Math.abs(d.total) < TAP_DEG) return onClose()
     if (dur) controls.seek(Math.max(0, Math.min(dur - 1000, d.start + d.total * MS_PER_DEG)))
     setTimeout(() => setScrub(null), 600) // let the next poll catch up before handing back to live progress
