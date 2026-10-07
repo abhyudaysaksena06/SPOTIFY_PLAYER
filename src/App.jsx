@@ -216,9 +216,8 @@ function Console({ toast }) {
           </div>
         </nav>
 
-        <section className={'content' + (vinyl ? ' is-vinyl' : '')}>
-          {vinyl ? <Vinyl track={state?.item} playing={playing} closing={vinyl === 'closing'} onClose={closeVinyl} onClosed={() => setVinyl(false)} />
-            : err ? <div className="pad"><h1>Something went wrong</h1><p className="muted">{err}</p></div>
+        <section className="content">
+          {err ? <div className="pad"><h1>Something went wrong</h1><p className="muted">{err}</p></div>
             : !data ? <div className="pad skeleton">{Array.from({ length: 10 }, (_, i) => <div key={i} />)}</div>
             : <>
               {data.hero ? (
@@ -297,6 +296,8 @@ function Console({ toast }) {
 
       <Player state={state} progress={progress} controls={controls} vinyl={vinyl} deviceName={device?.name}
         onArt={toggleVinyl} />
+      {vinyl && <Vinyl state={state} progress={progress} controls={controls}
+        closing={vinyl === 'closing'} onClose={closeVinyl} onClosed={() => setVinyl(false)} />}
     </div>
   )
 }

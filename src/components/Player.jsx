@@ -3,7 +3,7 @@ import { artists, fmt, img } from '../spotify'
 import { Device, Next, Pause, Play, Prev, Repeat, Shuffle, Volume } from './Icons'
 
 // Thin Spotify-style slider: white fill, green on hover, thumb appears on hover.
-function Bar({ value, max, onChange, onCommit }) {
+export function Bar({ value, max, onChange, onCommit }) {
   const p = max ? (value / max) * 100 : 0
   return (
     <input type="range" className="bar" min="0" max={max || 1} value={value} style={{ '--p': p + '%' }}
