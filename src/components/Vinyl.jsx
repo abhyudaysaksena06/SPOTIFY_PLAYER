@@ -31,7 +31,7 @@ function fly(url, from, to, fromRadius, toRadius, fromRot = 0) {
 }
 
 // Full-screen turntable "screen saver". Spin the record with a finger to scrub; tap it to go back.
-export default function Vinyl({ state, progress, controls, closing, onClose, onClosed }) {
+export default function Vinyl({ state, progress, controls, closing, onClose, onClosed, linked }) {
   const track = state?.item
   const playing = !!state?.is_playing
   const dur = track?.duration_ms || 0
@@ -157,7 +157,7 @@ export default function Vinyl({ state, progress, controls, closing, onClose, onC
             <Repeat size={22} />{state?.repeat_state === 'track' && <sup>1</sup>}
           </button>
         </div>
-        <p className="vinyl-hint">Spin the record to scrub · tap it to go back</p>
+        <p className="vinyl-hint">{linked ? 'Scratch sound → your Spotify device' : 'Spin the record to scrub'} · tap it to go back</p>
       </div>
     </div>
   )

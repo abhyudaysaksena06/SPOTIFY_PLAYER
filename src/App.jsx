@@ -3,7 +3,8 @@ import { REDIRECT, all, api, artists, clientId, fmt, handleRedirect, img, logged
 import { usePlayer } from './usePlayer'
 import Player from './components/Player'
 import Vinyl from './components/Vinyl'
-import { Clock, Collapse, Disc, Expand, Heart, Home, Library, Pause, Play, Search } from './components/Icons'
+import { startController, startSpeaker, stopRemote } from './remote'
+import { Clock, Collapse, Disc, Expand, Heart, Home, Library, Pause, Play, Search, Speaker } from './components/Icons'
 
 const card = (x, sub) => ({ id: x.id, type: x.type, name: x.name, image: img(x.images, 1), sub })
 
@@ -112,6 +113,24 @@ function Console({ toast }) {
   const [q, setQ] = useState('')
   const [vinyl, setVinyl] = useState(false) // false | true | 'closing'
   const [full, setFull] = useState(false)
+  const [me, setMe] = useState(null)
+  const [link, setLink] = useState('local') // local | linked | speaker | speaker-linked | taken | error
+  const isSpeaker = link.startsWith('speaker')
+
+  // phone ⇄ Spotify-device link for the scratch sound
+  useEffect(() => {
+    api('/me').then(u => { setMe(u.id); startController(u.id, setLink) }).catch(() => {})
+    return stopRemote
+  }, [])
+  useEffect(() => {
+    if (link === 'taken') { toast('Another tab is already the scratch speaker'); me && startController(me, setLink) }
+  }, [link])
+  const toggleSpeaker = () => {
+    if (!me) return
+    if (isSpeaker) return startController(me, setLink)
+    startSpeaker(me, setLink)
+    toast('This device will now play the scratch sound. Keep this tab open.')
+  }
   const closeVinyl = () => setVinyl(v => (v ? 'closing' : v))
   const toggleVinyl = () => (vinyl ? closeVinyl() : state?.item && setVinyl(true))
 
@@ -192,6 +211,10 @@ function Console({ toast }) {
           <select value={deviceId || ''} onChange={e => controls.selectDevice(e.target.value)} onFocus={() => controls.loadDevices().catch(() => {})} title="Playback device">
             {devices.length ? devices.map(d => <option key={d.id} value={d.id}>{d.name}</option>) : <option value="">No devices</option>}
           </select>
+          <button className={'fs' + (isSpeaker ? ' on' : link === 'linked' ? ' linked' : '')} onClick={toggleSpeaker}
+            title={isSpeaker ? 'Scratch speaker: ON (click to turn off)' : link === 'linked' ? 'Scratch sound goes to your Spotify device' : 'Make this device the scratch speaker'}>
+            <Speaker size={18} />
+          </button>
           <button className="fs" onClick={toggleFull} title={full ? 'Exit full screen' : 'Full screen'}>{full ? <Collapse size={18} /> : <Expand size={18} />}</button>
           <button className="pill" onClick={() => { logout(); location.reload() }}>Log out</button>
         </div>
@@ -296,7 +319,7 @@ function Console({ toast }) {
 
       <Player state={state} progress={progress} controls={controls} vinyl={vinyl} deviceName={device?.name}
         onArt={toggleVinyl} />
-      {vinyl && <Vinyl state={state} progress={progress} controls={controls}
+      {vinyl && <Vinyl state={state} progress={progress} controls={controls} linked={link === 'linked'}
         closing={vinyl === 'closing'} onClose={closeVinyl} onClosed={() => setVinyl(false)} />}
     </div>
   )

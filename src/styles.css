@@ -32,6 +32,8 @@ header { display: flex; align-items: center; gap: 8px; padding: 8px 8px }
 .hdr-right select { height: 32px; max-width: 200px; background: var(--elev); border: none; border-radius: 500px; padding: 0 12px; font-weight: 700; font-size: 13px; color: var(--text); cursor: pointer }
 .fs { width: 32px; height: 32px; border-radius: 50%; background: var(--elev); color: var(--sub); display: grid; place-items: center; transition: color .1s, transform .1s; flex: none }
 .fs:hover { color: var(--text); transform: scale(1.06) }
+.fs.on { background: var(--green); color: #000 }
+.fs.linked { color: var(--green) }
 .pill { height: 32px; padding: 0 16px; border-radius: 500px; background: var(--text); color: #000; font-weight: 700; font-size: 13px; transition: transform .1s }
 .pill:hover { transform: scale(1.04) }
 .burger { display: none; color: var(--sub) }

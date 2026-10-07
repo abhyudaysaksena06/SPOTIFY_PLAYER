@@ -1,9 +1,14 @@
 // Synthesised vinyl-scratch sound: filtered noise whose pitch and loudness follow the record's speed.
 let ctx, gain, filter, src
+let remote = null // open PeerJS connection to a speaker tab, if any
+export const setRemote = c => { remote = c }
+const send = m => { if (remote?.open) { remote.send(m); return true } return false }
 
 function init() {
   const AC = window.AudioContext || window.webkitAudioContext
   if (!AC) return false
+  // iOS 17+: mix with the Spotify app instead of pausing it
+  try { if (navigator.audioSession) navigator.audioSession.type = 'ambient' } catch {}
   ctx = new AC()
   const len = ctx.sampleRate * 2
   const buf = ctx.createBuffer(1, len, ctx.sampleRate)
@@ -25,12 +30,14 @@ function init() {
 
 // call from a pointerdown so mobile browsers allow audio
 export function scratchStart() {
+  send({ t: 'start' })
   if (!ctx && !init()) return
   if (ctx.state === 'suspended') ctx.resume()
 }
 
 // degPerSec: how fast the finger is turning the record (sign = direction)
-export function scratchSpeed(degPerSec) {
+export function scratchSpeed(degPerSec, fromRemote) {
+  if (!fromRemote && send({ t: 'speed', v: degPerSec })) return
   if (!ctx) return
   const v = Math.min(Math.abs(degPerSec), 1500)
   const t = ctx.currentTime
@@ -38,6 +45,7 @@ export function scratchSpeed(degPerSec) {
   gain.gain.setTargetAtTime(Math.min(0.9, v / 700), t, 0.02)
 }
 
-export function scratchStop() {
+export function scratchStop(fromRemote) {
+  if (!fromRemote && send({ t: 'stop' })) return
   if (ctx) gain.gain.setTargetAtTime(0, ctx.currentTime, 0.05)
 }
