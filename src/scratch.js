@@ -6,8 +6,8 @@ let remote = null // open PeerJS connection to a speaker tab, if any
 export const setRemote = c => { remote = c }
 const send = m => { if (remote?.open) { remote.send(m); return true } return false }
 
-// Seeking: one full turn of the record = 10 minutes of the song.
-export const MS_PER_DEG = 600000 / 360
+// Seeking: one full turn of the record = 1 minute of the song.
+export const MS_PER_DEG = 60000 / 360
 // Sound: a hand turning the record at this many degrees/second plays the groove at normal speed.
 // Playback speed and loudness scale linearly with the finger from there.
 const SOUND_DEG_PER_SEC = 90
