@@ -250,6 +250,23 @@ nav { background: var(--panel); border-radius: 8px; display: flex; flex-directio
 .lyrics-on .vinyl-hint { display: none }
 .lyrics-on .vinyl-disc { padding: 4px 16px 0 }
 
+/* lyrics on/off: each piece glides to its new place, lyrics drift in/out */
+.vinyl-stage .deck { view-transition-name: v-deck }
+.vinyl-stage .vinyl-meta { view-transition-name: v-meta }
+.vinyl-stage .vinyl-prog { view-transition-name: v-prog }
+.vinyl-stage .vinyl-btns { view-transition-name: v-btns }
+.vinyl-stage .vinyl-vol { view-transition-name: v-vol }
+.vinyl-stage .vinyl-hint { view-transition-name: v-hint }
+.vinyl-stage .lyrics { view-transition-name: v-lyrics }
+::view-transition-group(*) { animation-duration: .6s; animation-timing-function: cubic-bezier(.25, .9, .3, 1) }
+::view-transition-old(root), ::view-transition-new(root) { animation: none }
+::view-transition-new(v-lyrics) { animation: lyr-in .6s cubic-bezier(.25, .9, .3, 1) both }
+::view-transition-old(v-lyrics) { animation: lyr-out .35s ease-in both }
+::view-transition-new(v-hint) { animation: fade .5s .1s ease both }
+::view-transition-old(v-hint) { animation: lyr-out .25s ease-in both }
+@keyframes lyr-in { from { opacity: 0; transform: translateY(18px); filter: blur(6px) } }
+@keyframes lyr-out { to { opacity: 0; transform: translateY(10px); filter: blur(6px) } }
+
 /* landscape: controls on the left, record on the right */
 @media (orientation: landscape) and (min-width: 560px) {
   .vinyl-stage { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); grid-template-areas: "top top" "panel disc" }

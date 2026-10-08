@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { artists, fmt, img } from '../spotify'
 import { Bar } from './Player'
 import Tonearm from './Tonearm'
@@ -48,7 +49,17 @@ export default function Vinyl({ state, progress, volume, controls, closing, onCl
   const [scrub, setScrub] = useState(null) // song position while scratching / dragging the bar
   const [vol, setVol] = useState(null)     // volume while dragging its slider
   const [showLyrics, setShowLyrics] = useState(() => { try { return localStorage.getItem('lyrics') === '1' } catch { return false } })
-  const toggleLyrics = () => setShowLyrics(v => { try { localStorage.setItem('lyrics', v ? '0' : '1') } catch {} return !v })
+  // Switching layouts animates: every piece glides to its new spot (View Transitions), with a soft
+  // cross-fade where the browser doesn't support that.
+  const stage = useRef(null)
+  const toggleLyrics = () => {
+    const flip = () => flushSync(() => setShowLyrics(v => { try { localStorage.setItem('lyrics', v ? '0' : '1') } catch {} return !v }))
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return flip()
+    if (document.startViewTransition) return document.startViewTransition(flip)
+    const el = stage.current
+    el?.animate([{ opacity: 1 }, { opacity: 0.35 }], { duration: 160, easing: 'ease-in', fill: 'forwards' })
+      .finished.then(() => { flip(); el.animate([{ opacity: 0.35 }, { opacity: 1 }], { duration: 320, easing: 'ease-out' }) })
+  }
 
   // Opening: the whole record grows out of the cover photo. The photo *is* the label, so it
   // stays put as a square, rounds into a circle, and the grooves/arm fade in around it.
@@ -217,7 +228,7 @@ export default function Vinyl({ state, progress, volume, controls, closing, onCl
 
   const pos = scrub ?? progress
   return (
-    <div className={'vinyl-stage' + (closing ? ' out' : '') + (showLyrics ? ' lyrics-on' : '')}>
+    <div ref={stage} className={'vinyl-stage' + (closing ? ' out' : '') + (showLyrics ? ' lyrics-on' : '')}>
       <div className="vinyl-glow" style={{ backgroundImage: art ? `url(${art})` : undefined }} />
       <button className="vinyl-close" onClick={onClose} title="Back"><ChevronDown size={22} /></button>
 
