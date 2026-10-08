@@ -199,7 +199,8 @@ nav { background: var(--panel); border-radius: 8px; display: flex; flex-directio
 .vinyl-meta p { margin: 4px 0 0; color: var(--sub); font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
 .vinyl-prog .bar { height: 5px }
 .vinyl-prog .times { display: flex; justify-content: space-between; margin-top: 8px; font-size: 12px; color: var(--sub); font-variant-numeric: tabular-nums }
-.vinyl-btns { display: flex; justify-content: space-between; align-items: center }
+.vinyl-btns { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 10px }
+.vinyl-btns .side { display: flex; align-items: center; justify-content: space-around; min-width: 0 }
 .vinyl-btns .icon { width: 48px; height: 48px; color: var(--text) }
 .vinyl-btns .icon.lit { color: var(--green) }
 .pp.big { width: 68px; height: 68px }
@@ -237,7 +238,7 @@ nav { background: var(--panel); border-radius: 8px; display: flex; flex-directio
 .lyrics-on .vinyl-meta h2 { font-size: clamp(18px, 2.4vw, 24px) }
 .lyrics-on .vinyl-meta p { font-size: 14px }
 .lyrics-on .vinyl-prog { grid-area: prog; padding-top: 6px }
-.lyrics-on .vinyl-btns { grid-area: btns; justify-content: center; gap: 18px; padding-top: 4px }
+.lyrics-on .vinyl-btns { grid-area: btns; padding-top: 4px }
 .lyrics-on .vinyl-btns .icon { width: 40px; height: 40px }
 .lyrics-on .vinyl-btns .icon svg { width: 20px; height: 20px }
 .lyrics-on .pp.big { width: 54px; height: 54px }
@@ -260,7 +261,6 @@ nav { background: var(--panel); border-radius: 8px; display: flex; flex-directio
   .lyrics-on .vinyl-meta { text-align: left; align-self: end }
   .lyrics-on .lyrics { text-align: left; align-self: center }
   .lyrics-on .lyrics .lyr { transform-origin: left center }
-  .lyrics-on .vinyl-btns { justify-content: flex-start }
 }
 @media (orientation: landscape) and (max-height: 500px) {
   .vinyl-close { margin: 8px 12px 0; width: 36px; height: 36px }

@@ -246,17 +246,22 @@ export default function Vinyl({ state, progress, volume, controls, closing, onCl
           <Bar value={pos} max={dur} onChange={barMove} onCommit={barCommit} />
           <div className="times"><span>{fmt(pos)}</span><span>-{fmt(Math.max(0, dur - pos))}</span></div>
         </div>
+        {/* play/pause sits in the exact middle: equal-width groups on either side */}
         <div className="vinyl-btns">
-          <button className={'icon' + (state?.shuffle_state ? ' lit' : '')} onClick={controls.shuffle}><Shuffle size={22} /></button>
-          <button className="icon" onClick={controls.prev}><Prev size={28} /></button>
-          <button className="pp big" onClick={controls.toggle}>{playing ? <Pause size={28} /> : <Play size={28} />}</button>
-          <button className="icon" onClick={controls.next}><Next size={28} /></button>
-          <button className={'icon' + (state?.repeat_state && state.repeat_state !== 'off' ? ' lit' : '')} onClick={controls.repeat}>
-            <Repeat size={22} />{state?.repeat_state === 'track' && <sup>1</sup>}
-          </button>
-          <button className={'icon lyr-toggle' + (showLyrics ? ' lit' : '')} onClick={toggleLyrics} title={showLyrics ? 'Hide lyrics' : 'Show lyrics'}>
-            <LyricsIcon size={22} />
-          </button>
+          <div className="side l">
+            <button className={'icon' + (state?.shuffle_state ? ' lit' : '')} onClick={controls.shuffle} title="Shuffle"><Shuffle size={22} /></button>
+            <button className={'icon' + (state?.repeat_state && state.repeat_state !== 'off' ? ' lit' : '')} onClick={controls.repeat} title="Repeat">
+              <Repeat size={22} />{state?.repeat_state === 'track' && <sup>1</sup>}
+            </button>
+            <button className="icon" onClick={controls.prev} title="Previous"><Prev size={28} /></button>
+          </div>
+          <button className="pp big" onClick={controls.toggle} title={playing ? 'Pause' : 'Play'}>{playing ? <Pause size={28} /> : <Play size={28} />}</button>
+          <div className="side r">
+            <button className="icon" onClick={controls.next} title="Next"><Next size={28} /></button>
+            <button className={'icon lyr-toggle' + (showLyrics ? ' lit' : '')} onClick={toggleLyrics} title={showLyrics ? 'Hide lyrics' : 'Show lyrics'}>
+              <LyricsIcon size={22} />
+            </button>
+          </div>
         </div>
         <div className="vinyl-vol">
           <Volume size={18} />
