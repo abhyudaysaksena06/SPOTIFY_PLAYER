@@ -16,6 +16,9 @@ export function usePlayer(toast) {
   const syncedAt = useRef(0)
   const cmdAt = useRef(0)
   const volAt = useRef(0)
+  const volSent = useRef(0)
+  const volNext = useRef(0)
+  const volTimer = useRef(null)
   const dev = useRef(deviceId)
   dev.current = deviceId
 
@@ -114,7 +117,15 @@ export function usePlayer(toast) {
       const n = { off: 'context', context: 'track', track: 'off' }[state?.repeat_state || 'off']
       patch({ repeat_state: n }); cmd('repeat?state=' + n, 'PUT')
     },
-    volume: v => { volAt.current = Date.now(); setVolume(+v); cmd('volume?volume_percent=' + Math.round(v), 'PUT', false) },
+    // called on every slider move: sends at most every 120ms while dragging, plus the final value
+    volume: v => {
+      volAt.current = Date.now(); setVolume(+v)
+      const send = () => { volSent.current = Date.now(); cmd('volume?volume_percent=' + Math.round(volNext.current), 'PUT', false) }
+      volNext.current = +v
+      clearTimeout(volTimer.current)
+      const wait = 120 - (Date.now() - volSent.current)
+      if (wait <= 0) send(); else volTimer.current = setTimeout(send, wait)
+    },
     // live: used while scratching — no follow-up polls, so many seeks in a row stay cheap
     seek: (ms, live) => {
       patch({ progress_ms: Math.round(ms) }); syncedAt.current = Date.now(); setProgress(ms)

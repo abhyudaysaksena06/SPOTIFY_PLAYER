@@ -53,7 +53,7 @@ export default function Player({ state, progress, volume, controls, vinyl, onArt
       <div className="right">
         {deviceName && <span className="dev"><Device /> {deviceName}</span>}
         <Volume />
-        <div className="vol"><Bar value={vol ?? volume ?? 50} max={100} onChange={setVol} onCommit={v => { controls.volume(v); setVol(null) }} /></div>
+        <div className="vol"><Bar value={vol ?? volume ?? 50} max={100} onChange={v => { setVol(v); controls.volume(v) }} onCommit={v => { controls.volume(v); setVol(null) }} /></div>
       </div>
     </footer>
   )

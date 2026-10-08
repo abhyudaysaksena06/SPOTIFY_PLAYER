@@ -244,7 +244,7 @@ export default function Vinyl({ state, progress, volume, controls, closing, onCl
         </div>
         <div className="vinyl-vol">
           <Volume size={18} />
-          <Bar value={vol ?? volume ?? 50} max={100} onChange={setVol} onCommit={v => { controls.volume(v); setVol(null) }} />
+          <Bar value={vol ?? volume ?? 50} max={100} onChange={v => { setVol(v); controls.volume(v) }} onCommit={v => { controls.volume(v); setVol(null) }} />
         </div>
         <p className="vinyl-hint">{linked ? 'Scratch sound → your Spotify device' : 'Spin or fling the record to scrub'} · tap it to go back</p>
       </div>
