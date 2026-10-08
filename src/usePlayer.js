@@ -80,21 +80,40 @@ export function usePlayer(toast) {
     if (!id) return toast('No device found — open Spotify on your device and play something once')
     cmdAt.current = Date.now()
     const send = d => api('/me/player/play?device_id=' + d, { method: 'PUT', body: JSON.stringify(body) })
+    const wake = d => api('/me/player', { method: 'PUT', body: JSON.stringify({ device_ids: [d], play: false }) }).catch(() => {})
+    const deviceProblem = e => e.status === 404 || /device|no active|restriction/i.test(e.message)
     try { await send(id) } catch (e) {
-      // device id went stale (app restarted / went to sleep): refresh the list and try once more
-      if (e.status !== 404 && !/device/i.test(e.message)) return err(e)
-      store.del('device'); dev.current = null
-      const fresh = await loadDevices().catch(() => null)
-      if (!fresh) return toast('Your Spotify device is offline — open Spotify on it and play something once')
-      try { await send(fresh) } catch (e2) { return err(e2) }
+      if (!deviceProblem(e)) return err(e)
+      // 1) the device is idle: make it the active player, then try again
+      await wake(id)
+      try { await send(id) } catch (e2) {
+        if (!deviceProblem(e2)) return err(e2)
+        // 2) the device id went stale (app restarted): refresh the list and try once more
+        store.del('device'); dev.current = null
+        const fresh = await loadDevices().catch(() => null)
+        if (!fresh) return toast('Your Spotify device is offline — open Spotify on it and play something once')
+        await wake(fresh)
+        try { await send(fresh) } catch (e3) { return err(e3) }
+      }
     }
     settle(250); settle(900)
   }
-  const cmd = async (path, method = 'POST', again = true) => {
+  const lastErr = useRef({ msg: '', at: 0 })
+  const cmd = async (path, method = 'POST', again = true, quiet = false) => {
+    const dq = dev.current ? (path.includes('?') ? '&' : '?') + 'device_id=' + dev.current : ''
     try {
-      await api('/me/player/' + path + (path.includes('?') ? '&' : '?') + 'device_id=' + (dev.current || ''), { method })
+      await api('/me/player/' + path + dq, { method })
       if (again) { settle(); settle(1000) }
-    } catch (e) { err(e); settle(0) }
+    } catch (e) {
+      // don't flood the screen with the same error while dragging/scratching
+      const now = Date.now()
+      if (!quiet || lastErr.current.msg !== e.message || now - lastErr.current.at > 5000) {
+        lastErr.current = { msg: e.message, at: now }
+        if (/volume/i.test(e.message) || e.status === 403 && /volume/.test(path)) toast("This device doesn't allow volume control from the web")
+        else err(e)
+      }
+      if (!quiet) settle(0)
+    }
   }
   const selectDevice = async id => {
     setDeviceId(id); store.set('device', id)
@@ -120,7 +139,7 @@ export function usePlayer(toast) {
     // called on every slider move: sends at most every 120ms while dragging, plus the final value
     volume: v => {
       volAt.current = Date.now(); setVolume(+v)
-      const send = () => { volSent.current = Date.now(); cmd('volume?volume_percent=' + Math.round(volNext.current), 'PUT', false) }
+      const send = () => { volSent.current = Date.now(); cmd('volume?volume_percent=' + Math.round(volNext.current), 'PUT', false, true) }
       volNext.current = +v
       clearTimeout(volTimer.current)
       const wait = 120 - (Date.now() - volSent.current)
@@ -129,7 +148,7 @@ export function usePlayer(toast) {
     // live: used while scratching — no follow-up polls, so many seeks in a row stay cheap
     seek: (ms, live) => {
       patch({ progress_ms: Math.round(ms) }); syncedAt.current = Date.now(); setProgress(ms)
-      cmd('seek?position_ms=' + Math.round(ms), 'PUT', !live)
+      cmd('seek?position_ms=' + Math.round(ms), 'PUT', !live, live)
     },
     selectDevice, loadDevices,
   }

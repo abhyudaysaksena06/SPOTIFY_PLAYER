@@ -50,7 +50,11 @@ let refreshing = null
 async function token() {
   if (Date.now() > +store.get('exp')) {
     refreshing ??= tokenReq({ grant_type: 'refresh_token', refresh_token: store.get('rt') }).finally(() => (refreshing = null))
-    await refreshing
+    try { await refreshing } catch (e) {
+      // login expired or access was removed in the dashboard: back to the login screen
+      if (/invalid|revoked|expired|grant/i.test(e.message)) { logout(); location.reload() }
+      throw e
+    }
   }
   return store.get('at')
 }

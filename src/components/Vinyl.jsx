@@ -74,7 +74,7 @@ export default function Vinyl({ state, progress, volume, controls, closing, onCl
     if (!closing) return
     setReady(false)
     // unwind the spin so the cover lands upright
-    const start = angle.current % 360, target = start > 180 ? 360 : 0, t0 = performance.now()
+    const start = ((angle.current % 360) + 360) % 360, target = start > 180 ? 360 : 0, t0 = performance.now()
     unwind.current = now => { const k = Math.min(1, (now - t0) / (DUR * 0.8)); angle.current = start + (target - start) * (1 - Math.pow(1 - k, 3)) }
     morph(false, onClosed)
   }, [closing])

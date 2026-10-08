@@ -20,7 +20,7 @@ const loaders = {
     // albums of your liked songs, so Home isn't empty when nothing is saved in "Albums"
     const seen = new Set(saved.map(x => x.album.id))
     const fromLiked = []
-    for (const { track } of liked) if (track?.album?.id && !seen.has(track.album.id)) { seen.add(track.album.id); fromLiked.push(card(track.album, artists(track.album))) }
+    for (const { track } of liked.filter(Boolean)) if (track?.album?.id && !seen.has(track.album.id)) { seen.add(track.album.id); fromLiked.push(card(track.album, artists(track.album))) }
     const sections = [
       ['Your Albums', saved.map(x => card(x.album, artists(x.album)))],
       ['Albums from your Liked Songs', fromLiked],
@@ -29,11 +29,11 @@ const loaders = {
     return { title: 'Home', sections, empty: sections.every(s => !s[1].length) }
   },
   liked: async () => {
-    const tracks = (await all('/me/tracks?limit=50', 500)).map(x => x.track)
+    const tracks = (await all('/me/tracks?limit=50', 500)).map(x => x?.track).filter(t => t?.uri)
     return { title: 'Liked Songs', hero: { kind: 'Playlist', tile: 'liked', sub: `${tracks.length} songs` }, tracks }
   },
-  recent: async () => ({ title: 'Recently Played', hero: { kind: 'History', tile: 'recent', sub: 'Your last 50 plays' }, tracks: (await api('/me/player/recently-played?limit=50')).items.map(x => x.track) }),
-  top: async () => ({ title: 'Your Top Tracks', hero: { kind: 'Playlist', tile: 'top', sub: 'Most played lately' }, tracks: (await api('/me/top/tracks?limit=50')).items }),
+  recent: async () => ({ title: 'Recently Played', hero: { kind: 'History', tile: 'recent', sub: 'Your last 50 plays' }, tracks: (await api('/me/player/recently-played?limit=50')).items.map(x => x?.track).filter(t => t?.uri) }),
+  top: async () => ({ title: 'Your Top Tracks', hero: { kind: 'Playlist', tile: 'top', sub: 'Most played lately' }, tracks: (await api('/me/top/tracks?limit=50')).items.filter(t => t?.uri) }),
   album: async id => {
     const a = await api('/albums/' + id)
     // the album response already holds the first 50 tracks; only page if there are more
@@ -62,16 +62,18 @@ const loaders = {
       api('/search?' + new URLSearchParams({ q: `artist:"${a.name}"`, type: 'track', limit: 10 })).catch(() => ({ tracks: { items: [] } })),
       api(`/artists/${id}/albums?include_groups=album,single&limit=50`),
     ])
-    return { title: a.name, hero: { kind: 'Artist', image: img(a.images), round: true, sub: a.genres?.slice(0, 3).join(' • ') || 'Artist', uri: a.uri }, tracksTitle: 'Popular', tracks: top.tracks.items.filter(t => t.artists.some(x => x.id === id)), cardsTitle: 'Discography', cards: al.items.map(x => card(x, x.release_date.slice(0, 4) + ' • ' + x.album_type)) }
+    return { title: a.name, hero: { kind: 'Artist', image: img(a.images), round: true, sub: a.genres?.slice(0, 3).join(' • ') || 'Artist', uri: a.uri }, tracksTitle: 'Popular', tracks: (top.tracks?.items || []).filter(t => t?.artists?.some(x => x.id === id)), cardsTitle: 'Discography', cards: al.items.filter(Boolean).map(x => card(x, (x.release_date || '').slice(0, 4) + ' • ' + x.album_type)) }
   },
   search: async q => {
     const j = await api('/search?' + new URLSearchParams({ q, type: 'track,album,artist,playlist', limit: 10 }))
+    const none = !j.tracks?.items?.length && !j.artists?.items?.length && !j.albums?.items?.length && !j.playlists?.items?.length
     return {
-      tracksTitle: 'Songs', tracks: j.tracks.items.filter(Boolean),
+      empty: none, emptyText: `No results for "${q}"`,
+      title: '', tracksTitle: 'Songs', tracks: (j.tracks?.items || []).filter(t => t?.uri),
       sections: [
-        ['Artists', j.artists.items.filter(Boolean).map(x => card(x, 'Artist'))],
-        ['Albums', j.albums.items.filter(Boolean).map(x => card(x, artists(x)))],
-        ['Playlists', j.playlists.items.filter(Boolean).map(x => card(x, 'By ' + (x.owner?.display_name || '')))],
+        ['Artists', (j.artists?.items || []).filter(Boolean).map(x => card(x, 'Artist'))],
+        ['Albums', (j.albums?.items || []).filter(Boolean).map(x => card(x, artists(x)))],
+        ['Playlists', (j.playlists?.items || []).filter(Boolean).map(x => card(x, 'By ' + (x.owner?.display_name || '')))],
       ],
     }
   },
@@ -234,7 +236,8 @@ function Console({ toast }) {
 
   useEffect(() => {
     const k = e => {
-      if (e.target.tagName === 'INPUT') { if (e.key === 'Escape') e.target.blur(); return }
+      if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) { if (e.key === 'Escape') e.target.blur(); return }
+      if (e.code === 'Space' && e.target.closest('button')) return
       if (e.key === 'Escape') closeVinyl()
       if (e.key === 'f') toggleFull()
       if (e.key === '/') { e.preventDefault(); document.querySelector('.search input').focus() }
@@ -315,7 +318,7 @@ function Console({ toast }) {
                   </div>
                 </div>
               ) : data.title && <h1 className="page-title">{data.title}</h1>}
-              {data.empty && <p className="pad muted">Nothing in your library yet. Save some albums or like some songs in Spotify, or use search.</p>}
+              {data.empty && <p className="pad muted">{data.emptyText || 'Nothing in your library yet. Save some albums or like some songs in Spotify, or use search.'}</p>}
 
               <div className="pad">
                 {data.hero && (data.tracks?.length > 0 || data.hero.uri) && (
@@ -347,9 +350,9 @@ function Console({ toast }) {
                           </span>
                           <span className="t">
                             {!data.hideAlbum && <img loading="lazy" src={img(t.album?.images, 2)} alt="" />}
-                            <span><b>{t.name}</b><small>{t.explicit && <i className="e">E</i>}{t.artists.map((a, k) => <span key={a.id}>{k > 0 && ', '}<a onClick={() => go('artist', a.id)}>{a.name}</a></span>)}</small></span>
+                            <span><b>{t.name}</b><small>{t.explicit && <i className="e">E</i>}{(t.artists || []).map((a, k) => <span key={a.id}>{k > 0 && ', '}<a onClick={() => go('artist', a.id)}>{a.name}</a></span>)}</small></span>
                           </span>
-                          {!data.hideAlbum && <span className="al"><a onClick={() => go('album', t.album.id)}>{t.album?.name}</a></span>}
+                          {!data.hideAlbum && <span className="al"><a onClick={() => t.album?.id && go('album', t.album.id)}>{t.album?.name}</a></span>}
                           <span className="d">{fmt(t.duration_ms)}</span>
                         </div>
                       )
