@@ -224,6 +224,7 @@ nav { background: var(--panel); border-radius: 8px; display: flex; flex-directio
   transform-origin: center; transition: color .5s ease, transform .45s cubic-bezier(.25,.9,.3,1), text-shadow .5s ease }
 .lyr.past { color: #ffffff8c }                         /* already sung */
 .lyr.now { color: #fff; transform: scale(1.12); text-shadow: 0 0 22px #ffffff38, 0 1px 12px #0006 } /* current line: white and a bit bigger (scaled, so line spacing never changes) */
+.lyr.music { font-weight: 600; letter-spacing: .12em; font-style: italic }
 .lyr-msg { margin: 0; padding-top: 1.5em; color: var(--sub); font-size: 15px; text-align: center }
 .lyr-note { position: absolute; right: 28px; bottom: 0; color: var(--dim); font-size: 11px }
 .lyr-toggle.lit::after { display: none }

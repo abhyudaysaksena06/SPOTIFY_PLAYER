@@ -10,8 +10,29 @@ function parseLrc(lrc) {
     const text = raw.replace(/\[[^\]]*\]/g, '').trim()
     for (const [, m, s] of stamps) lines.push({ t: (+m * 60 + +s) * 1000, text })
   }
-  // blank lines (musical pauses) would show as empty rows and make the spacing uneven
-  return lines.filter(l => l.text).sort((a, b) => a.t - b.t)
+  return withMusic(lines.sort((a, b) => a.t - b.t))
+}
+
+// Instrumental parts get a "♪ Music" line: the intro, blank lines in the LRC (pauses), and any long
+// stretch after a line has been sung before the next one starts.
+export const MUSIC = '♪  Music'
+const INTRO_MS = 2500
+const GAP_MS = 9000          // a gap this long between two lines is treated as an instrumental break
+const SUNG_MS_PER_CHAR = 80  // rough time a line takes to sing
+function withMusic(lines) {
+  const out = []
+  const push = l => { if (!(l.music && out[out.length - 1]?.music)) out.push(l) } // no two in a row
+  if (lines.length && lines[0].t > INTRO_MS) push({ t: 0, text: MUSIC, music: true })
+  lines.forEach((l, i) => {
+    if (!l.text) return push({ t: l.t, text: MUSIC, music: true })
+    push(l)
+    const next = lines[i + 1]
+    if (next?.text) {
+      const sungUntil = l.t + Math.max(2500, l.text.length * SUNG_MS_PER_CHAR)
+      if (next.t - l.t > GAP_MS && next.t - sungUntil > 4000) push({ t: sungUntil, text: MUSIC, music: true })
+    }
+  })
+  return out
 }
 
 function shape(rec) {
