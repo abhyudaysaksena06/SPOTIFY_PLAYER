@@ -123,7 +123,10 @@ export default function Vinyl({ state, progress, volume, controls, closing, onCl
       prev = angle.current
 
       const sess = session.current
-      if (sess) {
+      // a finger resting on the record hasn't scrubbed anything until it has actually turned it
+      // (otherwise a simple tap-to-close would jump the song back to where it was a moment ago)
+      const armed = !held || held.mode !== 'disc' || held.total >= TAP_DEG
+      if (sess && armed) {
         // during a hold the song is under the finger; while coasting only the extra speed counts
         sess.deviation += held ? moved : moved - base.current * dt
         const rel = held ? vel.current : vel.current - base.current
@@ -178,7 +181,7 @@ export default function Vinyl({ state, progress, volume, controls, closing, onCl
     drag.current = null
     // a quick touch without turning = tap, go back
     if (d.total < TAP_DEG && performance.now() - d.t0 < 350) {
-      session.current = null; scratchStop(); vel.current = base.current
+      session.current = null; scratchStop(); vel.current = base.current; setScrub(null)
       return onClose()
     }
     // fling: release velocity from the last ~80ms of motion

@@ -22,7 +22,6 @@ export default function Player({ state, progress, volume, controls, vinyl, onArt
     <footer className="player">
       <div className="now">
         <button className={'now-art' + (vinyl ? ' active' : '') + (state?.is_playing ? ' live' : '')} onClick={() => t && onArt()} title={vinyl ? 'Back to library' : 'Spin the record'}>
-          <i className="mini-disc" />
           {t ? <img src={img(t.album.images, 2)} alt="" /> : <span />}
         </button>
         <div className="now-text">
