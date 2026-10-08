@@ -10,7 +10,8 @@ function parseLrc(lrc) {
     const text = raw.replace(/\[[^\]]*\]/g, '').trim()
     for (const [, m, s] of stamps) lines.push({ t: (+m * 60 + +s) * 1000, text })
   }
-  return lines.sort((a, b) => a.t - b.t)
+  // blank lines (musical pauses) would show as empty rows and make the spacing uneven
+  return lines.filter(l => l.text).sort((a, b) => a.t - b.t)
 }
 
 function shape(rec) {
