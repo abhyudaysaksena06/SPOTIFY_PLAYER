@@ -1,6 +1,6 @@
 # Scratch Speaker companion for Windows.
 # Runs in the background, waits for Spotify to start, then opens the site's speaker page in a small
-# Edge app window (sound allowed without clicking). Closes that window when Spotify closes.
+# Chrome app window (sound allowed without clicking). Closes that window when Spotify closes.
 param(
   [string]$Site = 'https://spotifyplayer-one.vercel.app'
 )
@@ -9,11 +9,13 @@ $profileDir = Join-Path $env:LOCALAPPDATA 'ScratchSpeaker'
 $url = $Site.TrimEnd('/') + '/?speaker=1'
 
 function Find-Browser {
+  # Chrome first; Edge only as a fallback if Chrome isn't installed
   $candidates = @(
-    "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe",
-    "$env:ProgramFiles\Microsoft\Edge\Application\msedge.exe",
     "$env:ProgramFiles\Google\Chrome\Application\chrome.exe",
-    "$env:LOCALAPPDATA\Google\Chrome\Application\chrome.exe"
+    "${env:ProgramFiles(x86)}\Google\Chrome\Application\chrome.exe",
+    "$env:LOCALAPPDATA\Google\Chrome\Application\chrome.exe",
+    "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe",
+    "$env:ProgramFiles\Microsoft\Edge\Application\msedge.exe"
   )
   foreach ($c in $candidates) { if ($c -and (Test-Path $c)) { return $c } }
   return $null

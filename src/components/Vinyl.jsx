@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { artists, fmt, img } from '../spotify'
 import { Bar } from './Player'
+import Tonearm from './Tonearm'
 import { MS_PER_DEG, scratchSpeed, scratchStart, scratchStop } from '../scratch'
 import { Next, Pause, Play, Prev, Repeat, Shuffle, Volume } from './Icons'
 
@@ -219,9 +220,7 @@ export default function Vinyl({ state, progress, volume, controls, closing, onCl
               <span className="spindle" />
             </span>
           </div>
-          <div className={'tonearm' + (playing && ready ? ' on' : '')}>
-            <span className="pivot" /><span className="arm" /><span className="head" />
-          </div>
+          <Tonearm on={playing && ready} />
         </div>
       </div>
 

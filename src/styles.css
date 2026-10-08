@@ -191,12 +191,12 @@ nav { background: var(--panel); border-radius: 8px; display: flex; flex-directio
 .shine { position: absolute; inset: 0; border-radius: 50%; mix-blend-mode: screen; background: conic-gradient(from 20deg, transparent 0 8%, #ffffff1f 12%, transparent 18% 50%, #ffffff17 62%, transparent 68%) }
 .label { position: absolute; inset: 17%; border-radius: 50%; background: var(--green) center/cover; box-shadow: 0 0 0 4px #000, inset 0 0 24px #00000080; display: grid; place-items: center; pointer-events: none }
 .spindle { width: 6%; height: 6%; min-width: 10px; min-height: 10px; border-radius: 50%; background: #000; box-shadow: 0 0 0 3px #ccc, 0 0 0 5px #000 }
-.tonearm { position: absolute; top: -2%; right: 0; width: 34%; height: 75%; pointer-events: none; transform-origin: 78% 10%; transform: rotate(-28deg); transition: transform 1s cubic-bezier(.4, 1.3, .5, 1), opacity .45s }
-.tonearm.on { transform: rotate(0) }
-.tonearm .pivot { position: absolute; top: 2%; right: 12%; width: 24%; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle, #ddd, #555 60%, #222); box-shadow: 0 10px 20px #000 }
-.tonearm .arm { position: absolute; top: 12%; right: 22%; width: 4%; height: 78%; border-radius: 4px; background: linear-gradient(90deg, #777, #eee, #777); transform: rotate(22deg); transform-origin: top }
-.tonearm .head { position: absolute; bottom: 4%; left: 44%; width: 14%; height: 12%; border-radius: 3px; background: linear-gradient(#ddd, #666); transform: rotate(22deg) }
 
+/* tone arm: pivot sits at (150,50) of the 200x400 drawing; the stylus lands on the outer grooves */
+.tonearm { position: absolute; top: -6%; right: -6%; width: 46%; height: 92%; pointer-events: none; transition: opacity .45s }
+.tonearm svg { width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 14px 14px #000c) drop-shadow(0 2px 3px #0009) }
+.tonearm .arm-swing { transform-box: view-box; transform-origin: 150px 50px; transform: rotate(-17deg); transition: transform 1.1s cubic-bezier(.45, 1.25, .5, 1) }
+.tonearm.on .arm-swing { transform: rotate(0deg) }
 .vinyl-panel { grid-area: panel; position: relative; z-index: 1; width: 100%; max-width: 560px; justify-self: center; padding: 8px 28px 24px; display: flex; flex-direction: column; gap: 18px; animation: rise .7s .15s cubic-bezier(.2,.8,.2,1) both }
 .vinyl-meta h2 { margin: 0; font-size: clamp(22px, 3vw, 30px); font-weight: 700; letter-spacing: -.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
 .vinyl-meta p { margin: 4px 0 0; color: var(--sub); font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
