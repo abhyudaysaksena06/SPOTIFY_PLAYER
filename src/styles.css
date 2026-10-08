@@ -230,9 +230,10 @@ nav { background: var(--panel); border-radius: 8px; display: flex; flex-directio
 /* lyrics mode: title on top, record a bit smaller, lyrics between record and controls, compact controls */
 .vinyl-stage.lyrics-on { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr) auto auto auto auto;
   grid-template-areas: "top" "title" "disc" "lyrics" "prog" "btns" "vol" }
+.vinyl-stage.lyrics-on > .vinyl-close { align-self: center }
 .lyrics-on .vinyl-panel { display: contents }
 .lyrics-on .vinyl-panel > * { position: relative; z-index: 2; width: 100%; max-width: 560px; justify-self: center; padding-left: 28px; padding-right: 28px; animation: none }
-.lyrics-on .vinyl-meta { grid-area: title; text-align: center; margin-top: -4px }
+.lyrics-on .vinyl-meta { grid-area: top; align-self: center; text-align: center; padding: 14px 64px 0 !important }  /* same row as the back button */
 .lyrics-on .vinyl-meta h2 { font-size: clamp(18px, 2.4vw, 24px) }
 .lyrics-on .vinyl-meta p { font-size: 14px }
 .lyrics-on .vinyl-prog { grid-area: prog; padding-top: 6px }
