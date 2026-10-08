@@ -29,3 +29,14 @@ Import the repo in Vercel (framework: Vite, auto-detected). Optionally add the e
 ## Shortcuts
 
 `/` search · `Space` play/pause · `Shift+←/→` prev/next · `V` vinyl view · `Esc` close vinyl
+
+## Scratch Speaker (Windows companion)
+
+Plays the scratch sound from your phone on the laptop that runs Spotify, so you hear it in the same earphones.
+
+1. Double-click `companion/Install Scratch Speaker.bat`.
+2. Open Spotify. A small "Scratch Speaker" window opens automatically — log in with Spotify the first time.
+3. Spin the disc on your phone; the scratch plays on the laptop.
+
+It starts with Windows, opens only while Spotify is running, and closes when Spotify closes.
+Remove it with `companion/Uninstall Scratch Speaker.bat`.

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { REDIRECT, all, api, artists, clientId, fmt, handleRedirect, img, loggedIn, login, logout } from './spotify'
+import { REDIRECT, all, api, artists, clientId, fmt, handleRedirect, img, loggedIn, login, logout, store } from './spotify'
 import { usePlayer } from './usePlayer'
 import Player from './components/Player'
 import Vinyl from './components/Vinyl'
@@ -77,6 +77,38 @@ const loaders = {
   },
 }
 
+// The Windows companion opens the site with ?speaker=1 in its own Edge profile. Remember it, because
+// the Spotify login redirect comes back to "/" without the query string.
+if (new URLSearchParams(location.search).get('speaker') === '1') store.set('speakerMode', '1')
+const speakerMode = store.get('speakerMode') === '1'
+
+// Minimal page for the companion window: just receives scratches from the phone and plays them.
+function SpeakerPage() {
+  const [status, setStatus] = useState('starting')
+  useEffect(() => {
+    api('/me').then(u => { startSpeaker(u.id, setStatus, true); scratchStart() }).catch(e => setStatus('error: ' + e.message))
+    // keep the audio engine awake even if the window was minimised for a long time
+    const t = setInterval(scratchStart, 30000)
+    return () => { clearInterval(t); stopRemote() }
+  }, [])
+  const text = {
+    starting: 'Starting…', speaker: 'Ready — waiting for your phone',
+    'speaker-linked': 'Phone connected — scratches play here', taken: 'Another speaker is already running', error: 'Connection problem — retrying',
+  }[status] || status
+  useEffect(() => { if (status === 'error') { const t = setTimeout(() => location.reload(), 10000); return () => clearTimeout(t) } }, [status])
+  return (
+    <div className="login">
+      <div className="box">
+        <div className="login-disc" />
+        <h1>Scratch Speaker</h1>
+        <p className={status === 'speaker-linked' ? 'green' : 'muted'}>{text}</p>
+        <p className="muted" style={{ fontSize: 12 }}>You can minimise this window. It closes when Spotify closes.</p>
+        <button className="primary" onClick={() => { scratchStart(); import('./scratch').then(m => m.scratchTest()) }}>Test sound</button>
+      </div>
+    </div>
+  )
+}
+
 const TILES = { liked: <Heart size={24} />, recent: <Clock size={24} />, top: <Play size={24} />, home: <Disc size={24} /> }
 
 export default function App() {
@@ -88,6 +120,7 @@ export default function App() {
     handleRedirect().then(() => setAuthed(loggedIn())).catch(e => toast(e.message)).finally(() => setBoot(false))
   }, [toast])
   if (boot) return null
+  if (speakerMode) return <>{authed ? <SpeakerPage /> : <Login />}{msg && <div className="toast">{msg}</div>}</>
   return <>
     {authed ? <Console toast={toast} /> : <Login />}
     {msg && <div className="toast">{msg}</div>}
