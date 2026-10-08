@@ -13,21 +13,26 @@ function parseLrc(lrc) {
   return withMusic(lines.sort((a, b) => a.t - b.t))
 }
 
-// Instrumental parts (not the intro) get a "♪ ♪ ♪ ♪ ♪" line: blank lines in the LRC (pauses) and any
-// stretch after a line has been sung before the next one starts.
+// Every stretch where nobody is singing gets a "♪ ♪ ♪ ♪ ♪" line: the intro, blank lines in the LRC
+// (pauses), the gap after a line has been sung before the next starts, and the outro.
 export const MUSIC = '♪ ♪ ♪ ♪ ♪'
-const GAP_MS = 6000          // a gap this long between two lines is treated as an instrumental break
-const SUNG_MS_PER_CHAR = 80  // rough time a line takes to sing
+const SUNG_MS_PER_CHAR = 75  // rough time a line takes to sing
+const MIN_SUNG_MS = 2000
+const MIN_GAP_MS = 1500      // shorter silences than this aren't worth a marker
 function withMusic(lines) {
   const out = []
-  const push = l => { if (!(l.music && out[out.length - 1]?.music)) out.push(l) } // no two in a row
+  const music = t => { if (!out[out.length - 1]?.music) out.push({ t, text: MUSIC, music: true }) } // never two in a row
+  const sung = lines.filter(l => l.text)
+  if (!sung.length) return out
+  if (sung[0].t > MIN_GAP_MS) music(0)
   lines.forEach((l, i) => {
-    if (!l.text) return out.length && push({ t: l.t, text: MUSIC, music: true })
-    push(l)
-    const next = lines[i + 1]
-    if (next?.text) {
-      const sungUntil = l.t + Math.max(2500, l.text.length * SUNG_MS_PER_CHAR)
-      if (next.t - l.t > GAP_MS && next.t - sungUntil > 2500) push({ t: sungUntil, text: MUSIC, music: true })
+    if (!l.text) return music(l.t)
+    out.push(l)
+    const sungUntil = l.t + Math.max(MIN_SUNG_MS, l.text.length * SUNG_MS_PER_CHAR)
+    const next = lines.slice(i + 1).find(x => x.text) // next sung line (blank lines handled above)
+    if (!next || next.t - sungUntil > MIN_GAP_MS) {
+      const blankBefore = lines.slice(i + 1).find(x => !x.text && (!next || x.t < next.t))
+      if (!blankBefore) music(sungUntil)
     }
   })
   return out

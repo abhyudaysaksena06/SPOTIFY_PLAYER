@@ -218,13 +218,14 @@ nav { background: var(--panel); border-radius: 8px; display: flex; flex-directio
   mask-image: linear-gradient(transparent 0, #000 28%, #000 72%, transparent 100%);
   animation: rise .5s cubic-bezier(.2,.8,.2,1) both }
 .lyrics { text-align: center }
-.lyr-col { transition: transform .6s cubic-bezier(.25,.9,.3,1); will-change: transform }
-.lyr { margin: 0; padding: 7px 7%; line-height: 1.6; font-size: 1em; font-weight: 700; letter-spacing: .005em; color: #ffffff4d;
+.lyr-col { position: relative; width: 100%; transition: transform .6s cubic-bezier(.25,.9,.3,1); will-change: transform }
+.lyr { display: block; width: 100%; box-sizing: border-box; text-align: center; margin: 0; padding: 7px 7%; line-height: 1.6; font-size: 1em; font-weight: 700; letter-spacing: .005em; color: #ffffff4d;
   text-wrap: balance; text-shadow: 0 1px 12px #0006;
   transform-origin: center; transition: color .5s ease, transform .45s cubic-bezier(.25,.9,.3,1), text-shadow .5s ease }
 .lyr.past { color: #ffffff8c }                         /* already sung */
 .lyr.now { color: #fff; transform: scale(1.12); text-shadow: 0 0 22px #ffffff38, 0 1px 12px #0006 } /* current line: white and a bit bigger (scaled, so line spacing never changes) */
 .lyr.music { font-weight: 600; letter-spacing: .08em }
+.lyrics.only-music { display: grid; place-items: center }
 .lyr-msg { margin: 0; padding-top: 1.5em; color: var(--sub); font-size: 15px; text-align: center }
 .lyr-note { position: absolute; right: 28px; bottom: 0; color: var(--dim); font-size: 11px }
 .lyr-toggle.lit::after { display: none }
