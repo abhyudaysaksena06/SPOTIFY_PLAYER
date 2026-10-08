@@ -148,7 +148,7 @@ export function usePlayer(toast) {
     // live: used while scratching — no follow-up polls, so many seeks in a row stay cheap
     seek: (ms, live) => {
       patch({ progress_ms: Math.round(ms) }); syncedAt.current = Date.now(); setProgress(ms)
-      cmd('seek?position_ms=' + Math.round(ms), 'PUT', !live, live)
+      return cmd('seek?position_ms=' + Math.round(ms), 'PUT', !live, live)
     },
     selectDevice, loadDevices,
   }

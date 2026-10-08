@@ -11,7 +11,7 @@ const EASE = 'cubic-bezier(.2,.8,.2,1)'
 const DUR = 700
 const SPIN = 30        // degrees per second while playing (one turn every 12s)
 const TAP_DEG = 4      // less rotation than this counts as a tap (closes the view)
-const LIVE_SEEK_MS = 400 // while scratching, jump the device's playback this often
+const LIVE_SEEK_MS = 150 // while scratching, jump the device's playback this often (~7x a second)
 const FRICTION = 0.35    // seconds for a flung record to lose ~63% of its extra speed (lower = stops sooner)
 const MAX_FLING = 1500   // deg/s cap on how hard you can fling it
 
@@ -129,7 +129,11 @@ export default function Vinyl({ state, progress, volume, controls, closing, onCl
         scratchSpeed(rel)
         const pos = songPos(sess)
         if (now - lastScrubSet > 50) { lastScrubSet = now; setScrub(pos) }
-        if (now - sess.seekAt > LIVE_SEEK_MS && live.current.dur) { sess.seekAt = now; live.current.controls.seek(pos, true) }
+        // never more than one jump in flight, so slow responses can't pile up behind the finger
+        if (now - sess.seekAt > LIVE_SEEK_MS && !sess.inflight && live.current.dur) {
+          sess.seekAt = now; sess.inflight = true
+          Promise.resolve(live.current.controls.seek(pos, true)).finally(() => { sess.inflight = false })
+        }
         if (!held && Math.abs(rel) < 4) endSession()
       }
       if (record.current) record.current.style.transform = `rotate(${angle.current}deg)`
