@@ -5,7 +5,11 @@
 let ctx, out, nGain, bp, tGain, osc, tLp
 let remote = null // open PeerJS connection to a speaker tab, if any
 export const setRemote = c => { remote = c }
-const send = m => { if (remote?.open) { remote.send(m); return true } return false }
+// Only relay to the speaker app when Spotify is playing on a computer; if Spotify plays on this
+// phone, the scratch belongs here, so it plays locally even while a speaker is connected.
+let routeRemote = true
+export const setRouteRemote = on => { routeRemote = on }
+const send = m => { if (routeRemote && remote?.open) { remote.send(m); return true } return false }
 
 // Seeking: one full turn of the record = 1 minute of the song.
 export const MS_PER_DEG = 60000 / 360

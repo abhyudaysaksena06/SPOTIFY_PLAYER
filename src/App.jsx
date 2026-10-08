@@ -4,7 +4,7 @@ import { usePlayer } from './usePlayer'
 import Player from './components/Player'
 import Vinyl from './components/Vinyl'
 import { startController, startSpeaker, stopRemote } from './remote'
-import { scratchStart } from './scratch'
+import { scratchStart, setRouteRemote } from './scratch'
 import { Clock, Collapse, Disc, Expand, Heart, Home, Library, Pause, Play, Search, Speaker } from './components/Icons'
 
 const card = (x, sub) => ({ id: x.id, type: x.type, name: x.name, image: img(x.images, 1), sub })
@@ -259,6 +259,9 @@ function Console({ toast }) {
   const tabs = [['liked', 'Liked Songs', 'Playlist'], ['top', 'Top Tracks', 'Playlist'], ['recent', 'Recently Played', 'History']]
   const cardGroups = [...(data?.cards ? [[data.cardsTitle, data.cards]] : []), ...(data?.sections || [])]
   const device = devices.find(d => d.id === deviceId)
+  // where the scratch sound goes: the speaker app for a computer, this page for anything else (e.g. this phone)
+  const spotifyOnComputer = (state?.device?.type || device?.type) === 'Computer'
+  useEffect(() => { setRouteRemote(spotifyOnComputer) }, [spotifyOnComputer])
 
   return (
     <div className="app">

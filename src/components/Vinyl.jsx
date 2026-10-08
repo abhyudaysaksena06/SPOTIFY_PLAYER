@@ -34,6 +34,7 @@ function deckFromArt(deck, art) {
 
 // Full-screen turntable "screen saver". Spin the record with a finger to scrub; tap it to go back.
 export default function Vinyl({ state, progress, volume, controls, closing, onClose, onClosed, linked }) {
+  linked = linked && state?.device?.type === 'Computer'
   const track = state?.item
   const playing = !!state?.is_playing
   const dur = track?.duration_ms || 0
