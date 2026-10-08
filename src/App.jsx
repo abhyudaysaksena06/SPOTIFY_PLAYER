@@ -186,8 +186,18 @@ function Console({ toast }) {
     toast('This computer is now the scratch speaker — click anywhere once to allow sound')
   }, [me, link, state?.device?.type])
 
+  const touch = matchMedia('(hover: none)').matches
+  // where the scratch sound plays: 'device' = the Spotify device's Scratch Speaker app, 'here' = this page
+  const [route, setRoute] = useState(() => { try { return localStorage.getItem('scratchRoute') || 'device' } catch { return 'device' } })
+  useEffect(() => { setRouteRemote(route === 'device'); try { localStorage.setItem('scratchRoute', route) } catch {} }, [route])
   const toggleSpeaker = () => {
     if (!me) return
+    if (touch) {
+      const next = route === 'device' ? 'here' : 'device'
+      setRoute(next)
+      if (next === 'here') { scratchStart(); return toast('Scratch sound: this phone') }
+      return toast(link === 'linked' ? 'Scratch sound: your Spotify device' : 'Scratch sound: your Spotify device — open the Scratch Speaker app there')
+    }
     if (isSpeaker) return startController(me, setLink)
     startSpeaker(me, setLink)
     toast('Speaker on — you should hear a test scratch. Keep this tab open.')
@@ -258,8 +268,6 @@ function Console({ toast }) {
   const cardGroups = [...(data?.cards ? [[data.cardsTitle, data.cards]] : []), ...(data?.sections || [])]
   const device = devices.find(d => d.id === deviceId)
   // where the scratch sound goes: the speaker app for a computer, this page for anything else (e.g. this phone)
-  const spotifyOnComputer = (state?.device?.type || device?.type) === 'Computer'
-  useEffect(() => { setRouteRemote(spotifyOnComputer) }, [spotifyOnComputer])
 
   return (
     <div className="app">
@@ -275,8 +283,12 @@ function Console({ toast }) {
           <select value={deviceId || ''} onChange={e => controls.selectDevice(e.target.value)} onFocus={() => controls.loadDevices().catch(() => {})} title="Playback device">
             {devices.length ? devices.map(d => <option key={d.id} value={d.id}>{d.name}</option>) : <option value="">No devices</option>}
           </select>
-          <button className={'fs' + (isSpeaker ? ' on' : link === 'linked' ? ' linked' : '')} onClick={toggleSpeaker}
-            title={isSpeaker ? 'Scratch speaker: ON (click to turn off)' : link === 'linked' ? 'Scratch sound goes to your Spotify device' : 'Make this device the scratch speaker'}>
+          <button className={'fs' + (touch
+              ? (route === 'device' ? (link === 'linked' ? ' on' : ' linked') : '')
+              : (isSpeaker ? ' on' : link === 'linked' ? ' linked' : ''))} onClick={toggleSpeaker}
+            title={touch
+              ? (route === 'device' ? 'Scratch sound: your Spotify device (tap for this phone)' : 'Scratch sound: this phone (tap for your Spotify device)')
+              : (isSpeaker ? 'Scratch speaker: ON (click to turn off)' : 'Make this computer the scratch speaker')}>
             <Speaker size={18} />
           </button>
           <button className="fs" onClick={toggleFull} title={full ? 'Exit full screen' : 'Full screen'}>{full ? <Collapse size={18} /> : <Expand size={18} />}</button>
