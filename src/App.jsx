@@ -93,9 +93,8 @@ function SpeakerPage() {
   }, [])
   const text = {
     starting: 'Starting…', speaker: 'Ready — waiting for your phone',
-    'speaker-linked': 'Phone connected — scratches play here', taken: 'Another speaker is already running', error: 'Connection problem — retrying',
+    'speaker-linked': 'Phone connected — scratches play here', reclaiming: 'Reconnecting… (can take up to a minute after a restart)', error: 'Connection problem — retrying',
   }[status] || status
-  useEffect(() => { if (status === 'error') { const t = setTimeout(() => location.reload(), 10000); return () => clearTimeout(t) } }, [status])
   return (
     <div className="login">
       <div className="box">
@@ -159,7 +158,7 @@ function Console({ toast }) {
   const [vinyl, setVinyl] = useState(false) // false | true | 'closing'
   const [full, setFull] = useState(false)
   const [me, setMe] = useState(null)
-  const [link, setLink] = useState('local') // local | linked | speaker | speaker-linked | taken | error
+  const [link, setLink] = useState('local') // local | linked | speaker | speaker-linked | reclaiming | error
   const isSpeaker = link.startsWith('speaker')
 
   // phone ⇄ Spotify-device link for the scratch sound
@@ -171,7 +170,8 @@ function Console({ toast }) {
     if (link === 'linked') toast('Connected: scratches will play on your Spotify device')
     if (link === 'speaker-linked') toast('Phone connected — scratches will play here')
     if (link === 'error') toast('Could not connect the scratch speaker (network may block it)')
-    if (link === 'taken') { toast('Another tab is already the scratch speaker'); me && startController(me, setLink) }
+    // the companion window (or another tab) is already the speaker: this tab just stays a controller
+    if (link === 'reclaiming') { toast('Another window is already the scratch speaker'); me && startController(me, setLink) }
   }, [link])
   // A laptop/desktop browser while Spotify plays on a computer is almost certainly that computer:
   // make it the scratch speaker automatically. Browsers only allow sound after one click on the page.
