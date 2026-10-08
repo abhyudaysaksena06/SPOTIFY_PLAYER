@@ -211,11 +211,11 @@ nav { background: var(--panel); border-radius: 8px; display: flex; flex-directio
 .vinyl-hint { margin: 0; text-align: center; color: var(--dim); font-size: 12px; letter-spacing: .04em }
 
 /* lyrics window: a tall column that glides up behind a fixed window with faded edges */
-.lyrics { grid-area: lyrics; position: relative; z-index: 2; width: 100%; max-width: 600px; justify-self: center; padding: 0 32px;
-  height: calc(4.6 * 1.6em + 24px); overflow: hidden; font-size: clamp(16px, 2.1vw, 21px);
+.lyrics { grid-area: lyrics; position: relative; z-index: 4; width: 100%; max-width: 600px; justify-self: center; padding: 0 32px;
+  height: calc(5 * 2.2em); overflow: hidden; font-size: clamp(16px, 2.1vw, 21px);
   /* soft fade at both edges so the lines melt into the glowing background */
-  -webkit-mask-image: linear-gradient(transparent 0, #000 22%, #000 70%, transparent 100%);
-  mask-image: linear-gradient(transparent 0, #000 22%, #000 70%, transparent 100%);
+  -webkit-mask-image: linear-gradient(transparent 0, #000 28%, #000 72%, transparent 100%);
+  mask-image: linear-gradient(transparent 0, #000 28%, #000 72%, transparent 100%);
   animation: rise .5s cubic-bezier(.2,.8,.2,1) both }
 .lyrics { text-align: center }
 .lyr-col { transition: transform .6s cubic-bezier(.25,.9,.3,1); will-change: transform }
@@ -238,15 +238,15 @@ nav { background: var(--panel); border-radius: 8px; display: flex; flex-directio
 .lyrics-on .vinyl-meta { grid-area: top; align-self: center; text-align: center; padding: 14px 64px 0 !important }  /* same row as the back button */
 .lyrics-on .vinyl-meta h2 { font-size: clamp(18px, 2.4vw, 24px) }
 .lyrics-on .vinyl-meta p { font-size: 14px }
-.lyrics-on .vinyl-prog { grid-area: prog; padding-top: 6px }
+.lyrics-on .vinyl-prog { grid-area: prog; padding-top: 14px }
 .lyrics-on .vinyl-btns { grid-area: btns; padding-top: 4px }
 .lyrics-on .vinyl-btns .icon { width: 40px; height: 40px }
 .lyrics-on .vinyl-btns .icon svg { width: 20px; height: 20px }
 .lyrics-on .pp.big { width: 54px; height: 54px }
 .lyrics-on .pp.big svg { width: 22px; height: 22px }
-.lyrics-on .vinyl-vol { grid-area: vol; padding-top: 10px; padding-bottom: 18px }
+.lyrics-on .vinyl-vol { grid-area: vol; padding-top: 8px; padding-bottom: 4px }
 .lyrics-on .vinyl-hint { display: none }
-.lyrics-on .vinyl-disc { padding: 8px 16px }
+.lyrics-on .vinyl-disc { padding: 4px 16px 0 }
 
 /* landscape: controls on the left, record on the right */
 @media (orientation: landscape) and (min-width: 560px) {
@@ -260,8 +260,7 @@ nav { background: var(--panel); border-radius: 8px; display: flex; flex-directio
     grid-template-rows: auto auto minmax(0, 1fr) auto auto auto;
     grid-template-areas: "top top" "title disc" "lyrics disc" "prog disc" "btns disc" "vol disc" }
   .lyrics-on .vinyl-meta { text-align: left; align-self: end }
-  .lyrics-on .lyrics { text-align: left; align-self: center }
-  .lyrics-on .lyr { transform-origin: left center }
+  .lyrics-on .lyrics { align-self: center }
 }
 @media (orientation: landscape) and (max-height: 500px) {
   .vinyl-close { margin: 8px 12px 0; width: 36px; height: 36px }
