@@ -217,13 +217,13 @@ nav { background: var(--panel); border-radius: 8px; display: flex; flex-directio
   mask-image: linear-gradient(transparent, #000 18%, #000 72%, transparent);
   animation: rise .5s cubic-bezier(.2,.8,.2,1) both }
 .lyrics { text-align: center }
-.lyrics .lyr { transform-origin: center }
 .lyr-col { transition: transform .6s cubic-bezier(.25,.9,.3,1); will-change: transform }
-.lyr { margin: 0; padding: 2px 0; line-height: 1.5; font-weight: 800; letter-spacing: -.01em; color: #ffffff47;
-  transform-origin: left center; transition: color .5s ease, opacity .5s ease, transform .5s cubic-bezier(.25,.9,.3,1), filter .5s ease;
-  filter: blur(.3px) }
-.lyr.past { color: #ffffffb3; filter: none }
-.lyr.now { color: #fff; filter: none; transform: scale(1.03); text-shadow: 0 0 24px #ffffff40 }
+.lyr { margin: 0; padding: 3px 0; line-height: 1.45; font-size: 1em; font-weight: 800; letter-spacing: -.01em; color: #ffffff4d;
+  transition: color .45s ease, font-size .35s cubic-bezier(.25,.9,.3,1) }
+.lyr.past { color: #ffffffd9 }                         /* already sung: white */
+.lyr.now { font-size: 1.14em; color: #ffffff59 }       /* current line: a bit bigger, fills in word by word */
+.lyr.now .w { transition: color .28s ease }
+.lyr.now .w.sung { color: #fff }
 .lyr-msg { margin: 0; padding-top: 1.5em; color: var(--sub); font-size: 15px; text-align: center }
 .lyr-note { position: absolute; right: 28px; bottom: 0; color: var(--dim); font-size: 11px }
 .lyr-toggle.lit::after { display: none }
@@ -260,7 +260,6 @@ nav { background: var(--panel); border-radius: 8px; display: flex; flex-directio
     grid-template-areas: "top top" "title disc" "lyrics disc" "prog disc" "btns disc" "vol disc" }
   .lyrics-on .vinyl-meta { text-align: left; align-self: end }
   .lyrics-on .lyrics { text-align: left; align-self: center }
-  .lyrics-on .lyrics .lyr { transform-origin: left center }
 }
 @media (orientation: landscape) and (max-height: 500px) {
   .vinyl-close { margin: 8px 12px 0; width: 36px; height: 36px }
