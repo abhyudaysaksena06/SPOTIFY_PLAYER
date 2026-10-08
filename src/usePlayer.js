@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { api, store } from './spotify'
+import { api, rateLimited, store } from './spotify'
 
-const POLL_VISIBLE = 1500
-const POLL_HIDDEN = 10000
+// Spotify's dev-mode quota is small and shared, so poll gently; commands update the UI instantly anyway.
+const POLL_VISIBLE = 3000
+const POLL_HIDDEN = 30000
 
 // Polls the Spotify Connect player and exposes remote-control actions.
 // Commands update the UI immediately (optimistic) and any poll that started before the
@@ -25,7 +26,8 @@ export function usePlayer(toast) {
   const poll = useCallback(async () => {
     const started = Date.now()
     try {
-      const s = await api('/me/player')
+      if (rateLimited()) return
+      const s = await api('/me/player', { background: true })
       if (started < cmdAt.current) return // a command was sent while this was in flight
       syncedAt.current = Date.now()
       setState(s)
@@ -102,7 +104,7 @@ export function usePlayer(toast) {
   const cmd = async (path, method = 'POST', again = true, quiet = false) => {
     const dq = dev.current ? (path.includes('?') ? '&' : '?') + 'device_id=' + dev.current : ''
     try {
-      await api('/me/player/' + path + dq, { method })
+      await api('/me/player/' + path + dq, { method, background: quiet })
       if (again) { settle(); settle(1000) }
     } catch (e) {
       // don't flood the screen with the same error while dragging/scratching
@@ -136,13 +138,13 @@ export function usePlayer(toast) {
       const n = { off: 'context', context: 'track', track: 'off' }[state?.repeat_state || 'off']
       patch({ repeat_state: n }); cmd('repeat?state=' + n, 'PUT')
     },
-    // called on every slider move: sends at most every 120ms while dragging, plus the final value
+    // called on every slider move: sends at most every 250ms while dragging, plus the final value
     volume: v => {
       volAt.current = Date.now(); setVolume(+v)
       const send = () => { volSent.current = Date.now(); cmd('volume?volume_percent=' + Math.round(volNext.current), 'PUT', false, true) }
       volNext.current = +v
       clearTimeout(volTimer.current)
-      const wait = 120 - (Date.now() - volSent.current)
+      const wait = 250 - (Date.now() - volSent.current)
       if (wait <= 0) send(); else volTimer.current = setTimeout(send, wait)
     },
     // live: used while scratching — no follow-up polls, so many seeks in a row stay cheap

@@ -12,7 +12,8 @@ const EASE = 'cubic-bezier(.2,.8,.2,1)'
 const DUR = 700
 const SPIN = 30        // degrees per second while playing (one turn every 12s)
 const TAP_DEG = 4      // less rotation than this counts as a tap (closes the view)
-const LIVE_SEEK_MS = 20  // while scratching, jump the device's playback this often (up to 50x a second)
+const LIVE_SEEK_MS = 250 // while scratching, jump the device's playback this often (4x a second keeps
+                         // within Spotify's request quota; faster used it up and broke search/albums)
 const FRICTION = 0.35    // seconds for a flung record to lose ~63% of its extra speed (lower = stops sooner)
 const MAX_FLING = 1500   // deg/s cap on how hard you can fling it
 
@@ -230,7 +231,7 @@ export default function Vinyl({ state, progress, volume, controls, closing, onCl
   return (
     <div ref={stage} className={'vinyl-stage' + (closing ? ' out' : '') + (showLyrics ? ' lyrics-on' : '')}>
       <div className="vinyl-glow" style={{ backgroundImage: art ? `url(${art})` : undefined }} />
-      <button className="vinyl-close" onClick={onClose} title="Back"><ChevronDown size={22} /></button>
+      <button className="vinyl-close" onClick={onClose} title="Back" aria-label="Back"><ChevronDown size={22} /></button>
 
       <div className="vinyl-disc">
         <div className="deck" ref={deck}>
@@ -260,16 +261,16 @@ export default function Vinyl({ state, progress, volume, controls, closing, onCl
         {/* play/pause sits in the exact middle: equal-width groups on either side */}
         <div className="vinyl-btns">
           <div className="side l">
-            <button className={'icon' + (state?.shuffle_state ? ' lit' : '')} onClick={controls.shuffle} title="Shuffle"><Shuffle size={22} /></button>
-            <button className={'icon' + (state?.repeat_state && state.repeat_state !== 'off' ? ' lit' : '')} onClick={controls.repeat} title="Repeat">
+            <button className={'icon' + (state?.shuffle_state ? ' lit' : '')} onClick={controls.shuffle} title="Shuffle" aria-label="Shuffle"><Shuffle size={22} /></button>
+            <button className={'icon' + (state?.repeat_state && state.repeat_state !== 'off' ? ' lit' : '')} onClick={controls.repeat} title="Repeat" aria-label="Repeat">
               <Repeat size={22} />{state?.repeat_state === 'track' && <sup>1</sup>}
             </button>
-            <button className="icon" onClick={controls.prev} title="Previous"><Prev size={28} /></button>
+            <button className="icon" onClick={controls.prev} title="Previous" aria-label="Previous"><Prev size={28} /></button>
           </div>
-          <button className="pp big" onClick={controls.toggle} title={playing ? 'Pause' : 'Play'}>{playing ? <Pause size={28} /> : <Play size={28} />}</button>
+          <button className="pp big" onClick={controls.toggle} title={playing ? 'Pause' : 'Play'} aria-label={playing ? 'Pause' : 'Play'}>{playing ? <Pause size={28} /> : <Play size={28} />}</button>
           <div className="side r">
-            <button className="icon" onClick={controls.next} title="Next"><Next size={28} /></button>
-            <button className={'icon lyr-toggle' + (showLyrics ? ' lit' : '')} onClick={toggleLyrics} title={showLyrics ? 'Hide lyrics' : 'Show lyrics'}>
+            <button className="icon" onClick={controls.next} title="Next" aria-label="Next"><Next size={28} /></button>
+            <button className={'icon lyr-toggle' + (showLyrics ? ' lit' : '')} onClick={toggleLyrics} title={showLyrics ? 'Hide lyrics' : 'Show lyrics'} aria-label={showLyrics ? 'Hide lyrics' : 'Show lyrics'} aria-pressed={showLyrics}>
               <LyricsIcon size={22} />
             </button>
           </div>

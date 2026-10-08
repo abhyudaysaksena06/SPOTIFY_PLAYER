@@ -14,7 +14,7 @@ const loaders = {
   home: async () => {
     const [saved, liked, pls] = await Promise.all([
       all('/me/albums?limit=50').catch(() => []),
-      all('/me/tracks?limit=50', 300).catch(() => []),
+      all('/me/tracks?limit=50', 100).catch(() => []),
       all('/me/playlists?limit=50').catch(() => []),
     ])
     // albums of your liked songs, so Home isn't empty when nothing is saved in "Albums"
@@ -272,15 +272,15 @@ function Console({ toast }) {
   return (
     <div className="app">
       <header>
-        <button className="burger" onClick={() => setNavOpen(o => !o)}><Library size={20} /></button>
-        <button className={'home' + (view[0] === 'home' ? ' on' : '')} onClick={() => { setQ(''); go('home') }} title="Home"><Home size={22} /></button>
+        <button className="burger" aria-label="Your library" aria-expanded={navOpen} onClick={() => setNavOpen(o => !o)}><Library size={20} /></button>
+        <button className={'home' + (view[0] === 'home' ? ' on' : '')} onClick={() => { setQ(''); go('home') }} title="Home" aria-label="Home"><Home size={22} /></button>
         <label className="search">
           <Search size={20} />
-          <input value={q} onChange={e => setQ(e.target.value)} placeholder="What do you want to play?" />
-          {q && <button className="clear" onClick={() => setQ('')}>✕</button>}
+          <input value={q} onChange={e => setQ(e.target.value)} placeholder="What do you want to play?" aria-label="Search" type="search" enterKeyHint="search" />
+          {q && <button className="clear" aria-label="Clear search" onClick={() => setQ('')}>✕</button>}
         </label>
         <div className="hdr-right">
-          <select value={deviceId || ''} onChange={e => controls.selectDevice(e.target.value)} onFocus={() => controls.loadDevices().catch(() => {})} title="Playback device">
+          <select aria-label="Playback device" value={deviceId || ''} onChange={e => controls.selectDevice(e.target.value)} onFocus={() => controls.loadDevices().catch(() => {})} title="Playback device">
             {devices.length ? devices.map(d => <option key={d.id} value={d.id}>{d.name}</option>) : <option value="">No devices</option>}
           </select>
           <button className={'fs' + (touch
@@ -315,10 +315,10 @@ function Console({ toast }) {
           </div>
         </nav>
 
-        <section className="content">
+        <section className="content" aria-live="polite">
           {err ? <div className="pad"><h1>Something went wrong</h1><p className="muted">{err}</p></div>
             : !data ? <div className="pad skeleton">{Array.from({ length: 10 }, (_, i) => <div key={i} />)}</div>
-            : <>
+            : <div className="view-in" key={view.join(':')}>
               {data.hero ? (
                 <div className="hero">
                   <div className="hero-bg" style={data.hero.image ? { backgroundImage: `url(${data.hero.image})` } : undefined} data-tile={data.hero.tile} />
@@ -336,7 +336,7 @@ function Console({ toast }) {
               <div className="pad">
                 {data.hero && (data.tracks?.length > 0 || data.hero.uri) && (
                   <div className="action-bar">
-                    <button className="big-play" onClick={() => ctxPlaying ? controls.toggle() : data.hero.uri ? controls.play({ context_uri: data.hero.uri }) : playTrack(data.tracks, 0)}>
+                    <button className="big-play" aria-label={ctxPlaying ? 'Pause' : 'Play'} onClick={() => ctxPlaying ? controls.toggle() : data.hero.uri ? controls.play({ context_uri: data.hero.uri }) : playTrack(data.tracks, 0)}>
                       {ctxPlaying ? <Pause size={22} /> : <Play size={22} />}
                     </button>
                   </div>
@@ -357,7 +357,7 @@ function Console({ toast }) {
                         <div key={t.id + i} className={'row' + (cur ? ' playing' : '')} onClick={e => { if (!e.target.closest('a, button')) playTrack(data.tracks, i, data.ctx) }}>
                           <span className="n">
                             <span className="num">{cur && playing ? <i className="eq"><b /><b /><b /><b /></i> : i + 1}</span>
-                            <button className="row-play" onClick={() => cur ? controls.toggle() : playTrack(data.tracks, i, data.ctx)}>
+                            <button className="row-play" aria-label={cur && playing ? 'Pause' : 'Play ' + t.name} onClick={() => cur ? controls.toggle() : playTrack(data.tracks, i, data.ctx)}>
                               {cur && playing ? <Pause size={14} /> : <Play size={14} />}
                             </button>
                           </span>
@@ -381,7 +381,7 @@ function Console({ toast }) {
                         <div key={c.id} className="card" onClick={() => go(c.type, c.id)}>
                           <div className={'cover' + (c.type === 'artist' ? ' round' : '')}>
                             {c.image ? <img loading="lazy" src={c.image} alt="" /> : <Disc size={40} />}
-                            <button className="fab" onClick={e => { e.stopPropagation(); controls.play({ context_uri: `spotify:${c.type}:${c.id}` }) }}><Play size={20} /></button>
+                            <button className="fab" aria-label={'Play ' + c.name} onClick={e => { e.stopPropagation(); controls.play({ context_uri: `spotify:${c.type}:${c.id}` }) }}><Play size={20} /></button>
                           </div>
                           <b>{c.name}</b><small>{c.sub}</small>
                         </div>
@@ -390,7 +390,7 @@ function Console({ toast }) {
                   </div>
                 ))}
               </div>
-            </>}
+            </div>}
         </section>
       </main>
 

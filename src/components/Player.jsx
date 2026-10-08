@@ -21,7 +21,7 @@ export default function Player({ state, progress, volume, controls, vinyl, onArt
   return (
     <footer className="player">
       <div className="now">
-        <button className={'now-art' + (vinyl ? ' active' : '') + (state?.is_playing ? ' live' : '')} onClick={() => t && onArt()} title={vinyl ? 'Back to library' : 'Spin the record'}>
+        <button className={'now-art' + (vinyl ? ' active' : '') + (state?.is_playing ? ' live' : '')} onClick={() => t && onArt()} title={vinyl ? 'Back to library' : 'Spin the record'} aria-label={vinyl ? 'Back to library' : 'Open record view'}>
           {t ? <img src={img(t.album.images, 2)} alt="" /> : <span />}
         </button>
         <div className="now-text">
@@ -32,13 +32,13 @@ export default function Player({ state, progress, volume, controls, vinyl, onArt
 
       <div className="ctl">
         <div className="btns">
-          <button className={'icon' + (state?.shuffle_state ? ' lit' : '')} onClick={controls.shuffle} title="Shuffle"><Shuffle /></button>
-          <button className="icon" onClick={controls.prev} title="Previous"><Prev /></button>
-          <button className="pp" onClick={controls.toggle} title={state?.is_playing ? 'Pause' : 'Play'}>
+          <button className={'icon' + (state?.shuffle_state ? ' lit' : '')} onClick={controls.shuffle} title="Shuffle" aria-label="Shuffle"><Shuffle /></button>
+          <button className="icon" onClick={controls.prev} title="Previous" aria-label="Previous"><Prev /></button>
+          <button className="pp" onClick={controls.toggle} title={state?.is_playing ? 'Pause' : 'Play'} aria-label={state?.is_playing ? 'Pause' : 'Play'}>
             {state?.is_playing ? <Pause /> : <Play />}
           </button>
-          <button className="icon" onClick={controls.next} title="Next"><Next /></button>
-          <button className={'icon' + (state?.repeat_state && state.repeat_state !== 'off' ? ' lit' : '')} onClick={controls.repeat} title="Repeat">
+          <button className="icon" onClick={controls.next} title="Next" aria-label="Next"><Next /></button>
+          <button className={'icon' + (state?.repeat_state && state.repeat_state !== 'off' ? ' lit' : '')} onClick={controls.repeat} title="Repeat" aria-label="Repeat">
             <Repeat />{state?.repeat_state === 'track' && <sup>1</sup>}
           </button>
         </div>

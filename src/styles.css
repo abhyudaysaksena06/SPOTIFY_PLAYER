@@ -269,9 +269,11 @@ nav { background: var(--panel); border-radius: 8px; display: flex; flex-directio
 @media (orientation: landscape) and (min-width: 560px) {
   .vinyl-stage.lyrics-on { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     grid-template-rows: auto auto minmax(0, 1fr) auto auto auto;
-    grid-template-areas: "top top" "title disc" "lyrics disc" "prog disc" "btns disc" "vol disc" }
-  .lyrics-on .vinyl-meta { text-align: left; align-self: end }
+    grid-template-areas: "top disc" "title disc" "lyrics disc" "prog disc" "btns disc" "vol disc" }
+  .lyrics-on .vinyl-meta { grid-area: title !important; align-self: end; text-align: center; padding: 4px 32px 6px !important }
+  .lyrics-on .vinyl-meta h2 { font-size: clamp(20px, 2.2vw, 30px); white-space: nowrap }
   .lyrics-on .lyrics { align-self: center }
+  .lyrics-on .vinyl-vol { padding-bottom: 24px }
 }
 @media (orientation: landscape) and (max-height: 500px) {
   .vinyl-close { margin: 8px 12px 0; width: 36px; height: 36px }
@@ -356,4 +358,29 @@ nav { background: var(--panel); border-radius: 8px; display: flex; flex-directio
   .bar { height: 5px }
   .right { display: none }
   .toast { bottom: calc(env(safe-area-inset-bottom) + 170px) }
+}
+
+/* ---------- polish: focus, motion, feedback ---------- */
+:focus { outline: none }
+:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; border-radius: 6px }
+button, a, .card, .row, .lib-item { -webkit-tap-highlight-color: transparent }
+.card { transition: background .25s ease, transform .25s cubic-bezier(.2,.8,.2,1) }
+.card:hover { transform: translateY(-2px) }
+.card:active { transform: translateY(0) scale(.98) }
+.cover img, .hero img, .tile img { animation: img-in .45s ease both }
+@keyframes img-in { from { opacity: 0 } }
+.tracks .row { transition: background .15s ease }
+.lib-item, .icon, .pp, .fs, .home, .pill, .big-play, .fab { transition: background .15s ease, color .15s ease, transform .15s cubic-bezier(.2,.8,.2,1) }
+.icon:active, .pp:active, .fs:active, .home:active, .big-play:active, .pill:active { transform: scale(.92) }
+/* each page fades in when you navigate */
+.view-in { animation: view-in .35s cubic-bezier(.2,.8,.2,1) both }
+@keyframes view-in { from { opacity: 0; transform: translateY(6px) } }
+/* comfortable touch targets */
+@media (pointer: coarse) {
+  .vinyl-btns .icon, .lyrics-on .vinyl-btns .icon { min-width: 44px; min-height: 44px }
+  .row-play { min-width: 32px; min-height: 32px }
+}
+/* respect "reduce motion" */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important }
 }

@@ -61,15 +61,44 @@ async function token() {
 
 const sleep = ms => new Promise(r => setTimeout(r, ms))
 
-export async function api(path, opts = {}, tries = 2) {
+// Spotify's development-mode quota is shared across the whole developer account. When it says
+// "too many requests", everything here backs off until the time it asks for, instead of hammering it.
+let blockedUntil = 0
+export const rateLimited = () => Date.now() < blockedUntil
+const limitError = () => {
+  const s = Math.max(1, Math.ceil((blockedUntil - Date.now()) / 1000))
+  const e = new Error(`Spotify is limiting requests right now — try again in ${s}s`)
+  e.status = 429
+  return e
+}
+
+// Library pages (albums, artists, playlists, searches) rarely change: reuse answers for a few minutes
+// so going back and forth doesn't spend quota.
+const cache = new Map()
+const CACHE_MS = 5 * 60 * 1000
+const cacheable = (path, opts) => (!opts.method || opts.method === 'GET') && !/\/me\/player/.test(path)
+
+export async function api(path, opts = {}, tries = 1) {
+  const key = cacheable(path, opts) && path
+  const hit = key && cache.get(key)
+  if (hit && Date.now() - hit.at < CACHE_MS) return hit.data
+  if (rateLimited()) {
+    if (opts.background) throw limitError()
+    // a user action: wait briefly if the block is short, otherwise say how long
+    if (blockedUntil - Date.now() > 3000) throw limitError()
+    await sleep(blockedUntil - Date.now())
+  }
   const r = await fetch(path.startsWith('http') ? path : 'https://api.spotify.com/v1' + path, {
-    ...opts,
+    method: opts.method, body: opts.body,
     headers: { Authorization: 'Bearer ' + (await token()), 'Content-Type': 'application/json' },
   })
-  // rate-limited: wait as long as Spotify asks (capped) and try again
-  if (r.status === 429 && tries > 0) {
-    await sleep(Math.min(5, +r.headers.get('Retry-After') || 1) * 1000)
-    return api(path, opts, tries - 1)
+  if (r.status === 429) {
+    blockedUntil = Date.now() + Math.min(120, +r.headers.get('Retry-After') || 5) * 1000
+    if (tries > 0 && !opts.background && blockedUntil - Date.now() <= 3000) {
+      await sleep(blockedUntil - Date.now())
+      return api(path, opts, tries - 1)
+    }
+    throw limitError()
   }
   if (r.status === 204 || r.status === 202) return null
   // player commands can reply with a plain-text id instead of JSON
@@ -77,6 +106,7 @@ export async function api(path, opts = {}, tries = 2) {
   let j = null
   try { j = t ? JSON.parse(t) : null } catch {}
   if (!r.ok) { const e = new Error(j?.error?.message || r.statusText || 'Request failed (' + r.status + ')'); e.status = r.status; throw e }
+  if (key) cache.set(key, { at: Date.now(), data: j })
   return j
 }
 
