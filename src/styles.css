@@ -216,7 +216,7 @@ nav { background: var(--panel); border-radius: 8px; display: flex; flex-directio
   /* soft fade at both edges so the lines melt into the glowing background */
   -webkit-mask-image: linear-gradient(transparent 0, #000 28%, #000 72%, transparent 100%);
   mask-image: linear-gradient(transparent 0, #000 28%, #000 72%, transparent 100%);
-  animation: rise .5s cubic-bezier(.2,.8,.2,1) both }
+  animation: dissolve-in .6s ease both }
 .lyrics { text-align: center }
 .lyr-col { position: relative; width: 100%; transition: transform .6s cubic-bezier(.25,.9,.3,1); will-change: transform }
 .lyr { display: block; width: 100%; box-sizing: border-box; text-align: center; margin: 0; padding: 7px 7%; line-height: 1.6; font-size: 1em; font-weight: 700; letter-spacing: .005em; color: #ffffff4d;
@@ -250,22 +250,14 @@ nav { background: var(--panel); border-radius: 8px; display: flex; flex-directio
 .lyrics-on .vinyl-hint { display: none }
 .lyrics-on .vinyl-disc { padding: 4px 16px 0 }
 
-/* lyrics on/off: each piece glides to its new place, lyrics drift in/out */
-.vinyl-stage .deck { view-transition-name: v-deck }
-.vinyl-stage .vinyl-meta { view-transition-name: v-meta }
-.vinyl-stage .vinyl-prog { view-transition-name: v-prog }
-.vinyl-stage .vinyl-btns { view-transition-name: v-btns }
-.vinyl-stage .vinyl-vol { view-transition-name: v-vol }
-.vinyl-stage .vinyl-hint { view-transition-name: v-hint }
-.vinyl-stage .lyrics { view-transition-name: v-lyrics }
-::view-transition-group(*) { animation-duration: .6s; animation-timing-function: cubic-bezier(.25, .9, .3, 1) }
-::view-transition-old(root), ::view-transition-new(root) { animation: none }
-::view-transition-new(v-lyrics) { animation: lyr-in .6s cubic-bezier(.25, .9, .3, 1) both }
-::view-transition-old(v-lyrics) { animation: lyr-out .35s ease-in both }
-::view-transition-new(v-hint) { animation: fade .5s .1s ease both }
-::view-transition-old(v-hint) { animation: lyr-out .25s ease-in both }
-@keyframes lyr-in { from { opacity: 0; transform: translateY(18px); filter: blur(6px) } }
-@keyframes lyr-out { to { opacity: 0; transform: translateY(10px); filter: blur(6px) } }
+/* lyrics on/off: the whole screen dissolves from one layout into the other (no sliding) */
+::view-transition-group(root) { animation-duration: .7s }
+::view-transition-old(root) { animation: dissolve-out .7s ease both }
+::view-transition-new(root) { animation: dissolve-in .7s ease both }
+@keyframes dissolve-out { to { opacity: 0 } }
+@keyframes dissolve-in { from { opacity: 0 } }
+/* lyrics fade in when they arrive for a song */
+.lyr-col { animation: dissolve-in .6s ease both }
 
 /* landscape: controls on the left, record on the right */
 @media (orientation: landscape) and (min-width: 560px) {

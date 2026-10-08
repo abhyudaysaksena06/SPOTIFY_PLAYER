@@ -45,7 +45,7 @@ export default function Lyrics({ track, pos, dur }) {
 
   return (
     <div className="lyrics" ref={box}>
-      <div className="lyr-col" ref={col} style={{ transform: `translateY(${-shift}px)` }}>
+      <div key={track?.id} className="lyr-col" ref={col} style={{ transform: `translateY(${-shift}px)` }}>
         {lyrics.lines.map((l, i) => (
           <p key={i} className={'lyr' + (l.music ? ' music' : '') + (i === cur ? ' now' : i < cur ? ' past' : '')}>
             {l.text || '♪'}

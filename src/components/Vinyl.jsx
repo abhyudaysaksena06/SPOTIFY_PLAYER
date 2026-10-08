@@ -49,16 +49,17 @@ export default function Vinyl({ state, progress, volume, controls, closing, onCl
   const [scrub, setScrub] = useState(null) // song position while scratching / dragging the bar
   const [vol, setVol] = useState(null)     // volume while dragging its slider
   const [showLyrics, setShowLyrics] = useState(() => { try { return localStorage.getItem('lyrics') === '1' } catch { return false } })
-  // Switching layouts animates: every piece glides to its new spot (View Transitions), with a soft
-  // cross-fade where the browser doesn't support that.
+  // Switching layouts dissolves one screen into the other (View Transitions cross-fade), with a
+  // fade-out/fade-in where the browser doesn't support that.
   const stage = useRef(null)
   const toggleLyrics = () => {
     const flip = () => flushSync(() => setShowLyrics(v => { try { localStorage.setItem('lyrics', v ? '0' : '1') } catch {} return !v }))
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) return flip()
     if (document.startViewTransition) return document.startViewTransition(flip)
     const el = stage.current
-    el?.animate([{ opacity: 1 }, { opacity: 0.35 }], { duration: 160, easing: 'ease-in', fill: 'forwards' })
-      .finished.then(() => { flip(); el.animate([{ opacity: 0.35 }, { opacity: 1 }], { duration: 320, easing: 'ease-out' }) })
+    // fallback dissolve: fade the screen down, swap layouts, fade it back up
+    el?.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 300, easing: 'ease-in', fill: 'forwards' })
+      .finished.then(() => { flip(); el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 400, easing: 'ease-out', fill: 'forwards' }) })
   }
 
   // Opening: the whole record grows out of the cover photo. The photo *is* the label, so it
