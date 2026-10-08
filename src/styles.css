@@ -220,10 +220,8 @@ nav { background: var(--panel); border-radius: 8px; display: flex; flex-directio
 .lyr-col { transition: transform .6s cubic-bezier(.25,.9,.3,1); will-change: transform }
 .lyr { margin: 0; padding: 3px 0; line-height: 1.45; font-size: 1em; font-weight: 800; letter-spacing: -.01em; color: #ffffff4d;
   transition: color .45s ease, font-size .35s cubic-bezier(.25,.9,.3,1) }
-.lyr.past { color: #ffffffd9 }                         /* already sung: white */
-.lyr.now { font-size: 1.14em; color: #ffffff59 }       /* current line: a bit bigger, fills in word by word */
-.lyr.now .w { transition: color .28s ease }
-.lyr.now .w.sung { color: #fff }
+.lyr.past { color: #ffffff8c }                         /* already sung */
+.lyr.now { font-size: 1.14em; color: #fff }            /* current line: white and a bit bigger */
 .lyr-msg { margin: 0; padding-top: 1.5em; color: var(--sub); font-size: 15px; text-align: center }
 .lyr-note { position: absolute; right: 28px; bottom: 0; color: var(--dim); font-size: 11px }
 .lyr-toggle.lit::after { display: none }
