@@ -2,14 +2,16 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { artists, fmt, img } from '../spotify'
 import { Bar } from './Player'
 import { MS_PER_DEG, scratchSpeed, scratchStart, scratchStop } from '../scratch'
-import { Next, Pause, Play, Prev, Repeat, Shuffle } from './Icons'
+import { Next, Pause, Play, Prev, Repeat, Shuffle, Volume } from './Icons'
 
 const LABEL_INSET = 0.17 // label size = 66% of the record (keep in sync with .label in CSS)
 const EASE = 'cubic-bezier(.2,.8,.2,1)'
 const DUR = 700
 const SPIN = 30        // degrees per second while playing (one turn every 12s)
 const TAP_DEG = 4      // less rotation than this counts as a tap (closes the view)
-const LIVE_SEEK_MS = 300 // while scratching, jump the laptop's playback this often
+const LIVE_SEEK_MS = 400 // while scratching, jump the device's playback this often
+const FRICTION = 0.9     // seconds for a flung record to lose ~63% of its extra speed
+const MAX_FLING = 2500   // deg/s cap on how hard you can fling it
 
 function labelRect(deck) {
   const r = deck.getBoundingClientRect()
@@ -29,7 +31,7 @@ function deckFromArt(deck, art) {
 }
 
 // Full-screen turntable "screen saver". Spin the record with a finger to scrub; tap it to go back.
-export default function Vinyl({ state, progress, controls, closing, onClose, onClosed, linked }) {
+export default function Vinyl({ state, progress, volume, controls, closing, onClose, onClosed, linked }) {
   const track = state?.item
   const playing = !!state?.is_playing
   const dur = track?.duration_ms || 0
@@ -41,6 +43,7 @@ export default function Vinyl({ state, progress, controls, closing, onClose, onC
   const unwind = useRef(null)
   const [ready, setReady] = useState(false)
   const [scrub, setScrub] = useState(null) // song position while scratching / dragging the bar
+  const [vol, setVol] = useState(null)     // volume while dragging its slider
 
   // Opening: the whole record grows out of the cover photo. The photo *is* the label, so it
   // stays put as a square, rounds into a circle, and the grooves/arm fade in around it.
@@ -72,22 +75,67 @@ export default function Vinyl({ state, progress, controls, closing, onClose, onC
     morph(false, onClosed)
   }, [closing])
 
-  // spin loop: the record turns while playing, and follows the finger while scratching
-  const spinning = useRef(false)
-  spinning.current = playing && ready && !closing
+  // ---------- turntable physics ----------
+  // One loop owns the record's angle and velocity (deg/s). While a finger (or the progress bar) holds it,
+  // the velocity is measured from the motion; once released it keeps spinning and friction pulls it back
+  // to normal speed (or to rest when paused). The scratch sound and the song position both follow it.
+  const vel = useRef(0)
+  const session = useRef(null) // { startPos, startT, wasPlaying, deviation, seekAt } while scrubbing with the disc
+  const base = useRef(0)
+  base.current = playing && ready && !closing ? SPIN : 0
+  const live = useRef({})
+  live.current = { progress, dur, controls }
+
+  const songPos = sess => {
+    const elapsed = sess.wasPlaying ? performance.now() - sess.startT : 0
+    return Math.max(0, Math.min(live.current.dur - 1000, sess.startPos + elapsed + sess.deviation * MS_PER_DEG))
+  }
+  const endSession = () => {
+    const sess = session.current
+    session.current = null
+    scratchStop()
+    if (sess && live.current.dur) live.current.controls.seek(songPos(sess))
+    setTimeout(() => setScrub(null), 700) // let the next poll catch up before handing back to live progress
+  }
+
   useEffect(() => {
-    let raf, last = performance.now()
+    let raf, last = performance.now(), prev = angle.current, lastScrubSet = 0
     const loop = now => {
-      if (unwind.current) unwind.current(now)
-      else if (spinning.current && !drag.current) angle.current += SPIN * (now - last) / 1000
+      const dt = Math.min(0.05, (now - last) / 1000)
       last = now
+      const held = drag.current
+      if (unwind.current) unwind.current(now)
+      else if (held) {
+        // finger/bar sets the angle; measure velocity from it
+        const inst = dt ? (angle.current - prev) / dt : 0
+        vel.current = vel.current * 0.45 + inst * 0.55
+      } else {
+        // free spin: friction eases the velocity toward normal speed
+        vel.current = base.current + (vel.current - base.current) * Math.exp(-dt / FRICTION)
+        angle.current += vel.current * dt
+      }
+      const moved = angle.current - prev
+      prev = angle.current
+
+      const sess = session.current
+      if (sess) {
+        // during a hold the song is under the finger; while coasting only the extra speed counts
+        sess.deviation += held ? moved : moved - base.current * dt
+        const rel = held ? vel.current : vel.current - base.current
+        scratchSpeed(rel)
+        const pos = songPos(sess)
+        if (now - lastScrubSet > 50) { lastScrubSet = now; setScrub(pos) }
+        if (now - sess.seekAt > LIVE_SEEK_MS && live.current.dur) { sess.seekAt = now; live.current.controls.seek(pos, true) }
+        if (!held && Math.abs(rel) < 4) endSession()
+      }
       if (record.current) record.current.style.transform = `rotate(${angle.current}deg)`
       raf = requestAnimationFrame(loop)
     }
     raf = requestAnimationFrame(loop)
-    return () => cancelAnimationFrame(raf)
+    return () => { cancelAnimationFrame(raf); scratchStop() }
   }, [])
 
+  // ---------- finger on the record ----------
   const pointerAngle = e => {
     const r = deck.current.getBoundingClientRect()
     return Math.atan2(e.clientY - (r.top + r.height / 2), e.clientX - (r.left + r.width / 2)) * 180 / Math.PI
@@ -95,36 +143,64 @@ export default function Vinyl({ state, progress, controls, closing, onClose, onC
   const down = e => {
     if (!ready) return
     e.currentTarget.setPointerCapture(e.pointerId)
-    drag.current = { last: pointerAngle(e), total: 0, start: progress, t: performance.now(), seekAt: 0, acc: 0 }
     scratchStart()
+    drag.current = { mode: 'disc', last: pointerAngle(e), total: 0, t0: performance.now(), samples: [] }
+    // grabbing a record that is still coasting continues the same scrub
+    if (!session.current) session.current = { startPos: progress, startT: performance.now(), wasPlaying: playing, deviation: 0, seekAt: 0 }
+    vel.current = 0
   }
   const move = e => {
     const d = drag.current
-    if (!d) return
+    if (d?.mode !== 'disc') return
     const a = pointerAngle(e)
     let delta = a - d.last
     if (delta > 180) delta -= 360
     if (delta < -180) delta += 360
-    const now = performance.now()
     d.last = a
-    d.total += delta
+    d.total += Math.abs(delta)
     angle.current += delta
-    if (Math.abs(d.total) < TAP_DEG || !dur) return
-    // velocity from the actual finger motion; ignore ultra-short gaps that cause spikes
-    const dt = now - d.t
-    if (dt >= 8) { scratchSpeed((d.acc + delta) / dt * 1000); d.acc = 0; d.t = now } else d.acc += delta
-    const pos = Math.max(0, Math.min(dur - 1000, d.start + d.total * MS_PER_DEG))
-    setScrub(pos)
-    if (now - d.seekAt > LIVE_SEEK_MS) { d.seekAt = now; controls.seek(pos) }
+    const now = performance.now()
+    d.samples.push([now, angle.current])
+    while (d.samples.length > 2 && now - d.samples[0][0] > 80) d.samples.shift()
   }
   const up = () => {
     const d = drag.current
+    if (d?.mode !== 'disc') return
     drag.current = null
+    // a quick touch without turning = tap, go back
+    if (d.total < TAP_DEG && performance.now() - d.t0 < 350) {
+      session.current = null; scratchStop(); vel.current = base.current
+      return onClose()
+    }
+    // fling: release velocity from the last ~80ms of motion
+    const s0 = d.samples[0], s1 = d.samples[d.samples.length - 1]
+    const fresh = s0 && s1 && s1[0] - s0[0] > 10 && performance.now() - s1[0] < 60
+    const fling = fresh ? (s1[1] - s0[1]) / ((s1[0] - s0[0]) / 1000) : 0
+    vel.current = Math.max(-MAX_FLING, Math.min(MAX_FLING, fling))
+  }
+
+  // ---------- progress bar: dragging it turns the record and scratches ----------
+  const barMove = v => {
+    const now = performance.now()
+    let d = drag.current
+    if (d?.mode !== 'bar') {
+      scratchStart()
+      d = drag.current = { mode: 'bar', lastV: scrub ?? progress, t: now }
+    }
+    const deg = (v - d.lastV) / MS_PER_DEG
+    const dt = Math.max(8, now - d.t) / 1000
+    angle.current += deg
+    scratchSpeed(Math.max(-1800, Math.min(1800, deg / dt)))
+    d.lastV = v
+    d.t = now
+    setScrub(v)
+  }
+  const barCommit = v => {
+    if (drag.current?.mode === 'bar') drag.current = null
     scratchStop()
-    if (!d) return
-    if (Math.abs(d.total) < TAP_DEG) return onClose()
-    if (dur) controls.seek(Math.max(0, Math.min(dur - 1000, d.start + d.total * MS_PER_DEG)))
-    setTimeout(() => setScrub(null), 600) // let the next poll catch up before handing back to live progress
+    vel.current = base.current
+    controls.seek(v)
+    setTimeout(() => setScrub(null), 700)
   }
 
   const pos = scrub ?? progress
@@ -136,7 +212,7 @@ export default function Vinyl({ state, progress, controls, closing, onClose, onC
       <div className="vinyl-disc">
         <div className="deck" ref={deck}>
           <div ref={record} className={'record' + (ready ? ' ready' : '') + (scrub != null ? ' scratching' : '')}
-            onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} title="Spin to scrub · tap to go back">
+            onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} title="Spin or fling to scrub · tap to go back">
             <span className="grooves" />
             <span className="shine" />
             <span className="label" style={{ backgroundImage: art ? `url(${art})` : undefined }}>
@@ -155,7 +231,7 @@ export default function Vinyl({ state, progress, controls, closing, onClose, onC
           <p>{artists(track)}</p>
         </div>
         <div className="vinyl-prog">
-          <Bar value={pos} max={dur} onChange={setScrub} onCommit={v => { controls.seek(v); setTimeout(() => setScrub(null), 600) }} />
+          <Bar value={pos} max={dur} onChange={barMove} onCommit={barCommit} />
           <div className="times"><span>{fmt(pos)}</span><span>-{fmt(Math.max(0, dur - pos))}</span></div>
         </div>
         <div className="vinyl-btns">
@@ -167,7 +243,11 @@ export default function Vinyl({ state, progress, controls, closing, onClose, onC
             <Repeat size={22} />{state?.repeat_state === 'track' && <sup>1</sup>}
           </button>
         </div>
-        <p className="vinyl-hint">{linked ? 'Scratch sound → your Spotify device' : 'Spin the record to scrub'} · tap it to go back</p>
+        <div className="vinyl-vol">
+          <Volume size={18} />
+          <Bar value={vol ?? volume ?? 50} max={100} onChange={setVol} onCommit={v => { controls.volume(v); setVol(null) }} />
+        </div>
+        <p className="vinyl-hint">{linked ? 'Scratch sound → your Spotify device' : 'Spin or fling the record to scrub'} · tap it to go back</p>
       </div>
     </div>
   )

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { artists, fmt, img } from '../spotify'
 import { Device, Next, Pause, Play, Prev, Repeat, Shuffle, Volume } from './Icons'
 
@@ -13,11 +13,10 @@ export function Bar({ value, max, onChange, onCommit }) {
   )
 }
 
-export default function Player({ state, progress, controls, vinyl, onArt, deviceName }) {
+export default function Player({ state, progress, volume, controls, vinyl, onArt, deviceName }) {
   const t = state?.item
   const [seek, setSeek] = useState(null)
-  const [vol, setVol] = useState(50)
-  useEffect(() => { if (state?.device?.volume_percent != null) setVol(state.device.volume_percent) }, [state?.device?.volume_percent])
+  const [vol, setVol] = useState(null) // while dragging
 
   return (
     <footer className="player">
@@ -54,7 +53,7 @@ export default function Player({ state, progress, controls, vinyl, onArt, device
       <div className="right">
         {deviceName && <span className="dev"><Device /> {deviceName}</span>}
         <Volume />
-        <div className="vol"><Bar value={vol} max={100} onChange={setVol} onCommit={controls.volume} /></div>
+        <div className="vol"><Bar value={vol ?? volume ?? 50} max={100} onChange={setVol} onCommit={v => { controls.volume(v); setVol(null) }} /></div>
       </div>
     </footer>
   )

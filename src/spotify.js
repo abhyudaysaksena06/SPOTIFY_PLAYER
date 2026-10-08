@@ -55,17 +55,24 @@ async function token() {
   return store.get('at')
 }
 
-export async function api(path, opts = {}) {
+const sleep = ms => new Promise(r => setTimeout(r, ms))
+
+export async function api(path, opts = {}, tries = 2) {
   const r = await fetch(path.startsWith('http') ? path : 'https://api.spotify.com/v1' + path, {
     ...opts,
     headers: { Authorization: 'Bearer ' + (await token()), 'Content-Type': 'application/json' },
   })
+  // rate-limited: wait as long as Spotify asks (capped) and try again
+  if (r.status === 429 && tries > 0) {
+    await sleep(Math.min(5, +r.headers.get('Retry-After') || 1) * 1000)
+    return api(path, opts, tries - 1)
+  }
   if (r.status === 204 || r.status === 202) return null
   // player commands can reply with a plain-text id instead of JSON
   const t = await r.text()
   let j = null
   try { j = t ? JSON.parse(t) : null } catch {}
-  if (!r.ok) throw new Error(j?.error?.message || r.statusText)
+  if (!r.ok) { const e = new Error(j?.error?.message || r.statusText || 'Request failed (' + r.status + ')'); e.status = r.status; throw e }
   return j
 }
 

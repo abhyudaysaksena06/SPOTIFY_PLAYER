@@ -1,5 +1,8 @@
-// Synthesised vinyl-scratch sound: filtered noise whose pitch and loudness follow the record's speed.
-let ctx, gain, filter, src
+// Synthesised vinyl-scratch sound, driven every animation frame by how fast the record is moving
+// relative to normal playback. Two layers:
+//  - groove noise through a bandpass that sweeps up with speed (the hiss/"zzz" of the needle)
+//  - a buzzy low tone whose pitch rises and falls with speed (the "wicka" body of a scratch)
+let ctx, out, nGain, bp, tGain, osc, tLp
 let remote = null // open PeerJS connection to a speaker tab, if any
 export const setRemote = c => { remote = c }
 const send = m => { if (remote?.open) { remote.send(m); return true } return false }
@@ -12,24 +15,47 @@ function init() {
   const AC = window.AudioContext || window.webkitAudioContext
   if (!AC) return false
   ctx = new AC({ latencyHint: 'interactive' })
+  out = ctx.createDynamicsCompressor()
+  out.connect(ctx.destination)
+
+  // layer 1: crackly groove noise
   const len = ctx.sampleRate * 2
   const buf = ctx.createBuffer(1, len, ctx.sampleRate)
   const d = buf.getChannelData(0)
-  // crackly noise: white noise plus occasional dust pops
   for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * 0.6 + (Math.random() < 0.0008 ? (Math.random() * 2 - 1) : 0)
-  src = ctx.createBufferSource()
+  const src = ctx.createBufferSource()
   src.buffer = buf
   src.loop = true
-  filter = ctx.createBiquadFilter()
-  filter.type = 'bandpass'
-  filter.Q.value = 4
-  gain = ctx.createGain()
-  gain.gain.value = 0
-  src.connect(filter).connect(gain).connect(ctx.destination)
+  bp = ctx.createBiquadFilter()
+  bp.type = 'bandpass'
+  bp.Q.value = 4
+  nGain = ctx.createGain()
+  nGain.gain.value = 0
+  src.connect(bp).connect(nGain).connect(out)
   src.start()
-  // finger held still → fade out
-  setInterval(() => { if (performance.now() - lastMove > 80) gain.gain.setTargetAtTime(0, ctx.currentTime, 0.05) }, 40)
+
+  // layer 2: pitched body
+  osc = ctx.createOscillator()
+  osc.type = 'sawtooth'
+  osc.frequency.value = 40
+  tLp = ctx.createBiquadFilter()
+  tLp.type = 'lowpass'
+  tLp.frequency.value = 600
+  tLp.Q.value = 3
+  tGain = ctx.createGain()
+  tGain.gain.value = 0
+  osc.connect(tLp).connect(tGain).connect(out)
+  osc.start()
+
+  // nothing arriving (finger held still / speaker lost the phone) → fade out
+  setInterval(() => { if (performance.now() - lastMove > 90) silence() }, 40)
   return true
+}
+
+function silence() {
+  const t = ctx.currentTime
+  nGain.gain.setTargetAtTime(0, t, 0.03)
+  tGain.gain.setTargetAtTime(0, t, 0.03)
 }
 
 // call from a pointerdown/click so browsers allow audio
@@ -39,27 +65,34 @@ export function scratchStart() {
   if (ctx.state === 'suspended') ctx.resume()
 }
 
-// degPerSec: how fast the finger is turning the record (sign = direction)
+// degPerSec: speed of the record relative to normal playback (sign = direction)
 export function scratchSpeed(degPerSec, fromRemote) {
   if (!fromRemote && send({ t: 'speed', v: degPerSec })) return
   if (!ctx) return
   if (ctx.state === 'suspended') ctx.resume()
   lastMove = performance.now()
-  const v = Math.min(Math.abs(degPerSec), 1500)
+  const v = Math.min(Math.abs(degPerSec), 1800)
   const t = ctx.currentTime
-  filter.frequency.setTargetAtTime(200 + v * 2.2 * (degPerSec < 0 ? 0.75 : 1), t, 0.02)
-  gain.gain.setTargetAtTime(Math.min(0.9, v / 700), t, 0.02)
+  const k = 0.012 // response time: fast enough to feel attached to the finger
+  const level = v < 6 ? 0 : Math.min(1, Math.pow(v / 450, 0.7))
+  const back = degPerSec < 0
+  bp.frequency.setTargetAtTime(180 + v * (back ? 1.3 : 1.7), t, k)
+  bp.Q.setTargetAtTime(2.5 + Math.min(4, v / 300), t, k)
+  nGain.gain.setTargetAtTime(level * 0.85, t, k)
+  osc.frequency.setTargetAtTime(28 + v * (back ? 0.28 : 0.34), t, k)
+  tLp.frequency.setTargetAtTime(350 + v * 1.4, t, k)
+  tGain.gain.setTargetAtTime(level * 0.35, t, k)
 }
 
 export function scratchStop(fromRemote) {
   if (!fromRemote && send({ t: 'stop' })) return
-  if (ctx) gain.gain.setTargetAtTime(0, ctx.currentTime, 0.05)
+  if (ctx) silence()
 }
 
-// short "zip" so you can check the speaker device is actually making sound
+// short back-and-forth so you can check the speaker device is actually making sound
 export function scratchTest() {
   scratchStart()
   if (!ctx) return
   let i = 0
-  const id = setInterval(() => { scratchSpeed(i < 6 ? 600 : -500, true); if (++i > 12) clearInterval(id) }, 30)
+  const id = setInterval(() => { scratchSpeed(Math.sin(i / 3) * 700, true); if (++i > 20) clearInterval(id) }, 25)
 }

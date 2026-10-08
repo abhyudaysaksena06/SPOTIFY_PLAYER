@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { REDIRECT, all, api, artists, clientId, fmt, handleRedirect, img, loggedIn, login, logout } from './spotify'
 import { usePlayer } from './usePlayer'
 import Player from './components/Player'
 import Vinyl from './components/Vinyl'
 import { startController, startSpeaker, stopRemote } from './remote'
+import { scratchStart } from './scratch'
 import { Clock, Collapse, Disc, Expand, Heart, Home, Library, Pause, Play, Search, Speaker } from './components/Icons'
 
 const card = (x, sub) => ({ id: x.id, type: x.type, name: x.name, image: img(x.images, 1), sub })
@@ -28,20 +29,31 @@ const loaders = {
     return { title: 'Home', sections, empty: sections.every(s => !s[1].length) }
   },
   liked: async () => {
-    const tracks = (await all('/me/tracks?limit=50', 2000)).map(x => x.track)
+    const tracks = (await all('/me/tracks?limit=50', 500)).map(x => x.track)
     return { title: 'Liked Songs', hero: { kind: 'Playlist', tile: 'liked', sub: `${tracks.length} songs` }, tracks }
   },
   recent: async () => ({ title: 'Recently Played', hero: { kind: 'History', tile: 'recent', sub: 'Your last 50 plays' }, tracks: (await api('/me/player/recently-played?limit=50')).items.map(x => x.track) }),
   top: async () => ({ title: 'Your Top Tracks', hero: { kind: 'Playlist', tile: 'top', sub: 'Most played lately' }, tracks: (await api('/me/top/tracks?limit=50')).items }),
   album: async id => {
     const a = await api('/albums/' + id)
-    const tracks = (await all(`/albums/${id}/tracks?limit=50`)).map(t => ({ ...t, album: a }))
+    // the album response already holds the first 50 tracks; only page if there are more
+    const rest = a.tracks?.next ? await all(a.tracks.next).catch(() => []) : []
+    const tracks = [...(a.tracks?.items || []), ...rest].filter(Boolean).map(t => ({ ...t, album: a }))
     return { title: a.name, hero: { kind: a.album_type === 'single' ? 'Single' : 'Album', image: img(a.images), sub: `${artists(a)} • ${a.release_date?.slice(0, 4)} • ${a.total_tracks} songs`, uri: a.uri }, tracks, ctx: a.uri, hideAlbum: true }
   },
   playlist: async id => {
     const p = await api(`/playlists/${id}`)
-    const tracks = (await all(`/playlists/${id}/items?limit=100`, 3000)).map(x => x.item || x.track).filter(t => t?.uri && !t.uri.startsWith('spotify:local'))
-    return { title: p.name, hero: { kind: 'Playlist', image: img(p.images), sub: `${p.owner.display_name} • ${tracks.length} songs`, uri: p.uri }, tracks, ctx: p.uri }
+    // Spotify (2026) only lists songs of playlists you own or collaborate on; others can still be played
+    let tracks = [], locked = false
+    try {
+      tracks = (await all(`/playlists/${id}/items?limit=100`, 1000)).map(x => x.item || x.track).filter(t => t?.uri && !t.uri.startsWith('spotify:local'))
+    } catch (e) { if (e.status === 403 || e.status === 404) locked = true; else throw e }
+    const total = p.items?.total ?? p.tracks?.total
+    return {
+      title: p.name, tracks, ctx: p.uri,
+      hero: { kind: 'Playlist', image: img(p.images), sub: `${p.owner?.display_name || ''}${total != null ? ` • ${total} songs` : ''}`, uri: p.uri },
+      note: locked && "Spotify doesn't let this app list the songs of playlists you don't own. Press play to listen to it.",
+    }
   },
   artist: async id => {
     // top-tracks was removed for dev-mode apps (Feb 2026), so search the artist's songs instead
@@ -105,7 +117,7 @@ function Login() {
 }
 
 function Console({ toast }) {
-  const { state, progress, devices, deviceId, controls } = usePlayer(toast)
+  const { state, progress, devices, deviceId, volume, controls } = usePlayer(toast)
   const [view, setView] = useState(['home'])
   const [data, setData] = useState(null)
   const [err, setErr] = useState('')
@@ -128,6 +140,19 @@ function Console({ toast }) {
     if (link === 'error') toast('Could not connect the scratch speaker (network may block it)')
     if (link === 'taken') { toast('Another tab is already the scratch speaker'); me && startController(me, setLink) }
   }, [link])
+  // A laptop/desktop browser while Spotify plays on a computer is almost certainly that computer:
+  // make it the scratch speaker automatically. Browsers only allow sound after one click on the page.
+  const autoSpk = useRef(false)
+  useEffect(() => {
+    if (autoSpk.current || !me || link !== 'local' || matchMedia('(hover: none)').matches) return
+    if (state?.device?.type !== 'Computer') return
+    autoSpk.current = true
+    startSpeaker(me, setLink, true)
+    const unlock = () => { scratchStart(); removeEventListener('pointerdown', unlock) }
+    addEventListener('pointerdown', unlock)
+    toast('This computer is now the scratch speaker — click anywhere once to allow sound')
+  }, [me, link, state?.device?.type])
+
   const toggleSpeaker = () => {
     if (!me) return
     if (isSpeaker) return startController(me, setLink)
@@ -193,7 +218,6 @@ function Console({ toast }) {
     ctx ? controls.play({ context_uri: ctx, offset: { uri: tracks[i].uri } }) : controls.play({ uris: tracks.slice(i, i + 100).map(t => t.uri) })
 
   const nowUri = state?.item?.uri
-  const touch = matchMedia('(hover: none)').matches
   const playing = !!state?.is_playing
   const ctxPlaying = data?.hero?.uri && state?.context?.uri === data.hero.uri && playing
   const tabs = [['liked', 'Liked Songs', 'Playlist'], ['top', 'Top Tracks', 'Playlist'], ['recent', 'Recently Played', 'History']]
@@ -261,7 +285,7 @@ function Console({ toast }) {
               {data.empty && <p className="pad muted">Nothing in your library yet. Save some albums or like some songs in Spotify, or use search.</p>}
 
               <div className="pad">
-                {data.hero && data.tracks?.length > 0 && (
+                {data.hero && (data.tracks?.length > 0 || data.hero.uri) && (
                   <div className="action-bar">
                     <button className="big-play" onClick={() => ctxPlaying ? controls.toggle() : data.hero.uri ? controls.play({ context_uri: data.hero.uri }) : playTrack(data.tracks, 0)}>
                       {ctxPlaying ? <Pause size={22} /> : <Play size={22} />}
@@ -269,6 +293,7 @@ function Console({ toast }) {
                   </div>
                 )}
 
+                {data.note && <p className="muted note">{data.note}</p>}
                 {data.tracks?.length > 0 && <>
                   {data.tracksTitle && <h2>{data.tracksTitle}</h2>}
                   <div className={'tracks' + (data.hideAlbum ? ' no-album' : '')}>
@@ -280,7 +305,7 @@ function Console({ toast }) {
                     {data.tracks.map((t, i) => {
                       const cur = t.uri === nowUri
                       return (
-                        <div key={t.id + i} className={'row' + (cur ? ' playing' : '')} onDoubleClick={() => playTrack(data.tracks, i, data.ctx)} onClick={() => touch && playTrack(data.tracks, i, data.ctx)}>
+                        <div key={t.id + i} className={'row' + (cur ? ' playing' : '')} onClick={e => { if (!e.target.closest('a, button')) playTrack(data.tracks, i, data.ctx) }}>
                           <span className="n">
                             <span className="num">{cur && playing ? <i className="eq"><b /><b /><b /><b /></i> : i + 1}</span>
                             <button className="row-play" onClick={() => cur ? controls.toggle() : playTrack(data.tracks, i, data.ctx)}>
@@ -320,9 +345,9 @@ function Console({ toast }) {
         </section>
       </main>
 
-      <Player state={state} progress={progress} controls={controls} vinyl={vinyl} deviceName={device?.name}
+      <Player state={state} progress={progress} volume={volume} controls={controls} vinyl={vinyl} deviceName={device?.name}
         onArt={toggleVinyl} />
-      {vinyl && <Vinyl state={state} progress={progress} controls={controls} linked={link === 'linked'}
+      {vinyl && <Vinyl state={state} progress={progress} volume={volume} controls={controls} linked={link === 'linked'}
         closing={vinyl === 'closing'} onClose={closeVinyl} onClosed={() => setVinyl(false)} />}
     </div>
   )

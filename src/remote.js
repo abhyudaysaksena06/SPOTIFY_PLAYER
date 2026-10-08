@@ -15,9 +15,9 @@ function reset() {
 }
 
 // This tab plays the scratch sound for whoever is spinning the record.
-export function startSpeaker(userId, onStatus) {
+export function startSpeaker(userId, onStatus, quiet) {
   reset()
-  scratchTest() // unlock audio during the click, and let you hear that this device works
+  if (!quiet) scratchTest() // unlock audio during the click, and let you hear that this device works
   peer = new Peer(idFor(userId))
   peer.on('open', () => onStatus('speaker'))
   peer.on('connection', c => {
