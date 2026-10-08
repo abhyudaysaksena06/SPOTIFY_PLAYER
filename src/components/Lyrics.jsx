@@ -1,31 +1,43 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { currentLine, fetchLyrics } from '../lyrics'
 
-const SHOW = 4 // lines visible at once
-
-// A small window of lyrics that follows the song: the sung line is bright, the rest dimmed.
+// Spotify-style lyrics: every line is in one column that glides up as the song moves on.
+// The sung line is bright, lines already sung stay softly lit, upcoming ones are dim, and the
+// edges fade out so only ~3-4 lines are readable at a time.
 export default function Lyrics({ track, pos, dur }) {
   const [lyrics, setLyrics] = useState(undefined) // undefined = loading, null = none found
+  const col = useRef(null)
+  const box = useRef(null)
+  const [shift, setShift] = useState(0)
+
   useEffect(() => {
     let live = true
     setLyrics(undefined)
+    setShift(0)
     fetchLyrics(track).then(l => live && setLyrics(l))
     return () => { live = false }
   }, [track?.id])
 
+  const cur = lyrics ? currentLine(lyrics, pos, dur) : -1
+
+  // keep the current line in the upper third of the window, scrolling smoothly to it
+  useLayoutEffect(() => {
+    const el = col.current?.children[Math.max(0, cur)]
+    if (!el || !box.current) return
+    const target = el.offsetTop - box.current.clientHeight * 0.3 + el.offsetHeight / 2
+    setShift(Math.max(0, target))
+  }, [cur, lyrics])
+
   if (lyrics === undefined) return <div className="lyrics"><p className="lyr-msg">Loading lyrics…</p></div>
   if (!lyrics) return <div className="lyrics"><p className="lyr-msg">No lyrics found for this song</p></div>
 
-  const cur = currentLine(lyrics, pos, dur)
-  // keep the current line second from the top, so one past line and two upcoming lines show
-  const start = Math.max(0, Math.min(lyrics.lines.length - SHOW, cur - 1))
-  const view = lyrics.lines.slice(start, start + SHOW)
   return (
-    <div className="lyrics">
-      {view.map((l, k) => {
-        const i = start + k
-        return <p key={i} className={'lyr' + (i === cur ? ' now' : i < cur ? ' past' : '')}>{l.text || '♪'}</p>
-      })}
+    <div className="lyrics" ref={box}>
+      <div className="lyr-col" ref={col} style={{ transform: `translateY(${-shift}px)` }}>
+        {lyrics.lines.map((l, i) => (
+          <p key={i} className={'lyr' + (i === cur ? ' now' : i < cur ? ' past' : '')}>{l.text || '♪'}</p>
+        ))}
+      </div>
       {!lyrics.synced && <small className="lyr-note">Not time-synced</small>}
     </div>
   )

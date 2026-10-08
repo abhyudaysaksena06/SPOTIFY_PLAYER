@@ -4,7 +4,7 @@ import { Bar } from './Player'
 import Tonearm from './Tonearm'
 import Lyrics from './Lyrics'
 import { MS_PER_DEG, scratchSpeed, scratchStart, scratchStop } from '../scratch'
-import { Lyrics as LyricsIcon, Next, Pause, Play, Prev, Repeat, Shuffle, Volume } from './Icons'
+import { ChevronDown, Lyrics as LyricsIcon, Next, Pause, Play, Prev, Repeat, Shuffle, Volume } from './Icons'
 
 const LABEL_INSET = 0.17 // label size = 66% of the record (keep in sync with .label in CSS)
 const EASE = 'cubic-bezier(.2,.8,.2,1)'
@@ -216,10 +216,7 @@ export default function Vinyl({ state, progress, volume, controls, closing, onCl
   return (
     <div className={'vinyl-stage' + (closing ? ' out' : '') + (showLyrics ? ' lyrics-on' : '')}>
       <div className="vinyl-glow" style={{ backgroundImage: art ? `url(${art})` : undefined }} />
-      <button className="vinyl-close" onClick={onClose} title="Back">⌄</button>
-      <button className={'vinyl-lyr-btn' + (showLyrics ? ' on' : '')} onClick={toggleLyrics} title={showLyrics ? 'Hide lyrics' : 'Show lyrics'}>
-        <LyricsIcon size={18} /><span>Lyrics</span>
-      </button>
+      <button className="vinyl-close" onClick={onClose} title="Back"><ChevronDown size={22} /></button>
 
       <div className="vinyl-disc">
         <div className="deck" ref={deck}>
@@ -254,12 +251,15 @@ export default function Vinyl({ state, progress, volume, controls, closing, onCl
           <button className={'icon' + (state?.repeat_state && state.repeat_state !== 'off' ? ' lit' : '')} onClick={controls.repeat}>
             <Repeat size={22} />{state?.repeat_state === 'track' && <sup>1</sup>}
           </button>
+          <button className={'icon lyr-toggle' + (showLyrics ? ' lit' : '')} onClick={toggleLyrics} title={showLyrics ? 'Hide lyrics' : 'Show lyrics'}>
+            <LyricsIcon size={22} />
+          </button>
         </div>
         <div className="vinyl-vol">
           <Volume size={18} />
           <Bar value={vol ?? volume ?? 50} max={100} onChange={v => { setVol(v); controls.volume(v) }} onCommit={v => { controls.volume(v); setVol(null) }} />
         </div>
-        <p className="vinyl-hint">{linked ? 'Scratch sound → your Spotify device' : 'Spin or fling the record to scrub'} · tap it to go back</p>
+        <p className="vinyl-hint">Spin or fling the record to scrub · tap it to go back</p>
       </div>
     </div>
   )

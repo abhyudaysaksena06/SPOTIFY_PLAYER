@@ -9,7 +9,7 @@ import { scratchSpeed, scratchStart, scratchStop, scratchTest, setRemote } from 
 
 const idFor = userId => 'spconsole-' + userId.replace(/[^a-zA-Z0-9]/g, '')
 const PING_MS = 2000
-const DEAD_MS = 6000
+const DEAD_MS = 10000
 
 let peer = null
 let timers = []

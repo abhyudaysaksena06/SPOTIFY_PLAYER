@@ -169,8 +169,6 @@ function Console({ toast }) {
     return stopRemote
   }, [])
   useEffect(() => {
-    if (link === 'linked') toast('Connected: scratches will play on your Spotify device')
-    if (link === 'speaker-linked') toast('Phone connected — scratches will play here')
     if (link === 'error') toast('Could not connect the scratch speaker (network may block it)')
     // the companion window (or another tab) is already the speaker: this tab just stays a controller
     if (link === 'reclaiming') { toast('Another window is already the scratch speaker'); me && startController(me, setLink) }
