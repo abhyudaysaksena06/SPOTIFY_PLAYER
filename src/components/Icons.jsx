@@ -23,3 +23,4 @@ export const Disc = p => <S {...p}><circle cx="12" cy="12" r="9" /><circle cx="1
 export const Expand = p => <S {...p}><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" /></S>
 export const Collapse = p => <S {...p}><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" /></S>
 export const Speaker = p => <S {...p}><rect x="5" y="2" width="14" height="20" rx="2" /><circle cx="12" cy="14" r="4" /><path d="M12 6h.01" /></S>
+export const Lyrics = p => <S {...p}><path d="M4 5h16M4 10h12M4 15h9" /><circle cx="17.5" cy="17.5" r="2.5" /><path d="M20 17.5V11l2 1" /></S>

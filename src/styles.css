@@ -212,12 +212,51 @@ nav { background: var(--panel); border-radius: 8px; display: flex; flex-directio
 .tracks .row { cursor: pointer; content-visibility: auto; contain-intrinsic-size: auto 56px }
 .vinyl-hint { margin: 0; text-align: center; color: var(--dim); font-size: 12px; letter-spacing: .04em }
 
+/* lyrics toggle (disc screen only) */
+.vinyl-lyr-btn { grid-area: top; justify-self: end; position: relative; z-index: 4; display: flex; align-items: center; gap: 6px; height: 36px; margin: 16px 16px 0; padding: 0 14px; border-radius: 500px; background: #ffffff14; color: var(--sub); font-size: 13px; font-weight: 700 }
+.vinyl-lyr-btn:hover { color: var(--text) }
+.vinyl-lyr-btn.on { background: var(--text); color: #000 }
+
+/* lyrics window */
+.lyrics { grid-area: lyrics; position: relative; z-index: 2; width: 100%; max-width: 560px; justify-self: center; padding: 4px 28px; text-align: center; min-height: calc(4 * 1.45em + 8px); display: flex; flex-direction: column; justify-content: center; font-size: clamp(16px, 2.2vw, 20px); animation: rise .5s cubic-bezier(.2,.8,.2,1) both }
+.lyr { margin: 0; line-height: 1.45; font-weight: 700; color: #ffffff59; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color .35s, transform .35s }
+.lyr.past { color: #ffffff33 }
+.lyr.now { color: #fff; transform: scale(1.04) }
+.lyr-msg { margin: 0; color: var(--sub); font-size: 15px }
+.lyr-note { color: var(--dim); font-size: 11px; margin-top: 4px }
+
+/* lyrics mode: title on top, record a bit smaller, lyrics between record and controls, compact controls */
+.vinyl-stage.lyrics-on { grid-template-rows: auto auto minmax(0, 1fr) auto auto auto auto;
+  grid-template-areas: "top" "title" "disc" "lyrics" "prog" "btns" "vol" }
+.lyrics-on .vinyl-panel { display: contents }
+.lyrics-on .vinyl-panel > * { position: relative; z-index: 2; width: 100%; max-width: 560px; justify-self: center; padding-left: 28px; padding-right: 28px; animation: none }
+.lyrics-on .vinyl-meta { grid-area: title; text-align: center; margin-top: -4px }
+.lyrics-on .vinyl-meta h2 { font-size: clamp(18px, 2.4vw, 24px) }
+.lyrics-on .vinyl-meta p { font-size: 14px }
+.lyrics-on .vinyl-prog { grid-area: prog; padding-top: 6px }
+.lyrics-on .vinyl-btns { grid-area: btns; justify-content: center; gap: 18px; padding-top: 4px }
+.lyrics-on .vinyl-btns .icon { width: 40px; height: 40px }
+.lyrics-on .vinyl-btns .icon svg { width: 20px; height: 20px }
+.lyrics-on .pp.big { width: 54px; height: 54px }
+.lyrics-on .pp.big svg { width: 22px; height: 22px }
+.lyrics-on .vinyl-vol { grid-area: vol; padding-top: 10px; padding-bottom: 18px }
+.lyrics-on .vinyl-hint { display: none }
+.lyrics-on .vinyl-disc { padding: 8px 16px }
+
 /* landscape: controls on the left, record on the right */
 @media (orientation: landscape) and (min-width: 560px) {
   .vinyl-stage { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); grid-template-areas: "top top" "panel disc" }
   .vinyl-panel { align-self: center; justify-self: center; max-width: 460px; padding: 0 32px 32px }
   .vinyl-disc { padding: 8px 32px 40px }
   .vinyl-meta h2 { font-size: clamp(22px, 3.2vw, 40px); white-space: normal }
+}
+@media (orientation: landscape) and (min-width: 560px) {
+  .vinyl-stage.lyrics-on { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr) auto auto auto;
+    grid-template-areas: "top top" "title disc" "lyrics disc" "prog disc" "btns disc" "vol disc" }
+  .lyrics-on .vinyl-meta { text-align: left; align-self: end }
+  .lyrics-on .lyrics { text-align: left; align-self: center }
+  .lyrics-on .vinyl-btns { justify-content: flex-start }
 }
 @media (orientation: landscape) and (max-height: 500px) {
   .vinyl-close { margin: 8px 12px 0; width: 36px; height: 36px; font-size: 22px }
